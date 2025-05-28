@@ -1,0 +1,282 @@
+[
+  {
+    "name": "Dell XPS 13",
+    "category": "laptop",
+    "brand": "Dell",
+    "price": 1199.99,
+    "stock": 25,
+    "description": "13-inch ultraportable laptop with Intel i7, 16GB RAM, 512GB SSD.",
+    "specs": {
+      "cpu": "Intel Core i7-1250U",
+      "ram": "16GB",
+      "storage": "512GB SSD",
+      "screen": "13.4\" FHD+"
+    }
+  },
+  {
+    "name": "Apple MacBook Air M2",
+    "category": "laptop",
+    "brand": "Apple",
+    "price": 1299.99,
+    "stock": 15,
+    "description": "Lightweight MacBook with M2 chip, 8GB RAM, 256GB SSD.",
+    "specs": {
+      "cpu": "Apple M2",
+      "ram": "8GB",
+      "storage": "256GB SSD",
+      "screen": "13.6\" Retina"
+    }
+  },
+  {
+    "name": "Asus ROG Zephyrus G14",
+    "category": "laptop",
+    "brand": "Asus",
+    "price": 1599.0,
+    "stock": 10,
+    "description": "Gaming laptop with Ryzen 9, RTX 4060, 16GB RAM, 1TB SSD.",
+    "specs": {
+      "cpu": "AMD Ryzen 9 6900HS",
+      "ram": "16GB",
+      "storage": "1TB SSD",
+      "gpu": "NVIDIA RTX 4060"
+    }
+  },
+  {
+    "name": "HP Spectre x360",
+    "category": "laptop",
+    "brand": "HP",
+    "price": 1399.99,
+    "stock": 8,
+    "description": "2-in-1 convertible laptop with touchscreen, 16GB RAM, 1TB SSD.",
+    "specs": {
+      "cpu": "Intel Core i7-1355U",
+      "ram": "16GB",
+      "storage": "1TB SSD",
+      "screen": "13.5\" OLED"
+    }
+  },
+  {
+    "name": "Lenovo ThinkPad X1 Carbon",
+    "category": "laptop",
+    "brand": "Lenovo",
+    "price": 1499.99,
+    "stock": 14,
+    "description": "Business-class ultrabook with long battery life and lightweight design.",
+    "specs": {
+      "cpu": "Intel Core i7-1255U",
+      "ram": "16GB",
+      "storage": "512GB SSD",
+      "screen": "14\" WUXGA"
+    }
+  },
+  {
+    "name": "Acer Aspire 5",
+    "category": "laptop",
+    "brand": "Acer",
+    "price": 699.0,
+    "stock": 20,
+    "description": "Affordable laptop with Ryzen 5, 8GB RAM, and 512GB SSD.",
+    "specs": {
+      "cpu": "AMD Ryzen 5 5500U",
+      "ram": "8GB",
+      "storage": "512GB SSD",
+      "screen": "15.6\" FHD"
+    }
+  },
+  {
+    "name": "HP Pavilion Desktop",
+    "category": "desktop",
+    "brand": "HP",
+    "price": 749.99,
+    "stock": 12,
+    "description": "HP desktop with Ryzen 5, 16GB RAM, 1TB HDD.",
+    "specs": {
+      "cpu": "AMD Ryzen 5 5600G",
+      "ram": "16GB",
+      "storage": "1TB HDD",
+      "gpu": "Integrated"
+    }
+  },
+  {
+    "name": "Lenovo Legion Tower 5",
+    "category": "desktop",
+    "brand": "Lenovo",
+    "price": 1199.0,
+    "stock": 10,
+    "description": "Gaming desktop with Ryzen 7, 32GB RAM, 1TB SSD, RTX 3060.",
+    "specs": {
+      "cpu": "AMD Ryzen 7 5800",
+      "ram": "32GB",
+      "storage": "1TB SSD",
+      "gpu": "NVIDIA RTX 3060"
+    }
+  },
+  {
+    "name": "Dell Inspiron Desktop",
+    "category": "desktop",
+    "brand": "Dell",
+    "price": 599.99,
+    "stock": 18,
+    "description": "Compact desktop for home and office use with 8GB RAM.",
+    "specs": {
+      "cpu": "Intel Core i5-12400",
+      "ram": "8GB",
+      "storage": "256GB SSD",
+      "gpu": "Integrated"
+    }
+  },
+  {
+    "name": "CyberPowerPC Gamer Xtreme",
+    "category": "desktop",
+    "brand": "CyberPowerPC",
+    "price": 1349.0,
+    "stock": 7,
+    "description": "Gaming desktop with Intel i7, RTX 3060 Ti, 16GB RAM.",
+    "specs": {
+      "cpu": "Intel Core i7-12700F",
+      "ram": "16GB",
+      "storage": "1TB SSD",
+      "gpu": "NVIDIA RTX 3060 Ti"
+    }
+  },
+  {
+    "name": "Apple iMac 24\" M1",
+    "category": "desktop",
+    "brand": "Apple",
+    "price": 1299.0,
+    "stock": 5,
+    "description": "All-in-one desktop with Apple M1 chip and Retina 4.5K display.",
+    "specs": {
+      "cpu": "Apple M1",
+      "ram": "8GB",
+      "storage": "256GB SSD",
+      "screen": "24\" Retina"
+    }
+  },
+  {
+    "name": "Samsung 27-inch Monitor",
+    "category": "monitor",
+    "brand": "Samsung",
+    "price": 229.99,
+    "stock": 30,
+    "description": "FHD curved monitor with 75Hz refresh rate and HDMI support.",
+    "specs": {
+      "resolution": "1920x1080",
+      "size": "27 inch",
+      "refreshRate": "75Hz",
+      "ports": ["HDMI", "VGA"]
+    }
+  },
+  {
+    "name": "LG UltraGear 32\" QHD",
+    "category": "monitor",
+    "brand": "LG",
+    "price": 399.99,
+    "stock": 8,
+    "description": "Gaming monitor with 144Hz refresh rate and 1ms response time.",
+    "specs": {
+      "resolution": "2560x1440",
+      "size": "32 inch",
+      "refreshRate": "144Hz",
+      "ports": ["HDMI", "DisplayPort"]
+    }
+  },
+  {
+    "name": "ASUS ProArt Display 27\"",
+    "category": "monitor",
+    "brand": "Asus",
+    "price": 349.99,
+    "stock": 6,
+    "description": "Color-accurate display for creators with 100% sRGB.",
+    "specs": {
+      "resolution": "2560x1440",
+      "size": "27 inch",
+      "refreshRate": "75Hz",
+      "ports": ["HDMI", "DisplayPort", "USB-C"]
+    }
+  },
+  {
+    "name": "Acer Nitro XV272U",
+    "category": "monitor",
+    "brand": "Acer",
+    "price": 299.99,
+    "stock": 9,
+    "description": "144Hz gaming monitor with G-Sync support.",
+    "specs": {
+      "resolution": "2560x1440",
+      "size": "27 inch",
+      "refreshRate": "144Hz",
+      "ports": ["HDMI", "DisplayPort"]
+    }
+  },
+  {
+    "name": "ViewSonic 24\" VA2456-MHD",
+    "category": "monitor",
+    "brand": "ViewSonic",
+    "price": 159.99,
+    "stock": 20,
+    "description": "Budget-friendly monitor for office use.",
+    "specs": {
+      "resolution": "1920x1080",
+      "size": "24 inch",
+      "refreshRate": "60Hz",
+      "ports": ["HDMI", "VGA", "DisplayPort"]
+    }
+  },
+  {
+    "name": "MSI Optix G241",
+    "category": "monitor",
+    "brand": "MSI",
+    "price": 199.99,
+    "stock": 13,
+    "description": "Gaming monitor with 144Hz refresh rate and IPS panel.",
+    "specs": {
+      "resolution": "1920x1080",
+      "size": "24 inch",
+      "refreshRate": "144Hz",
+      "ports": ["HDMI", "DisplayPort"]
+    }
+  },
+  {
+    "name": "Gigabyte G32QC",
+    "category": "monitor",
+    "brand": "Gigabyte",
+    "price": 329.99,
+    "stock": 11,
+    "description": "32\" curved QHD monitor for immersive gaming.",
+    "specs": {
+      "resolution": "2560x1440",
+      "size": "32 inch",
+      "refreshRate": "165Hz",
+      "ports": ["HDMI", "DisplayPort"]
+    }
+  },
+  {
+    "name": "BenQ EW3270U",
+    "category": "monitor",
+    "brand": "BenQ",
+    "price": 449.99,
+    "stock": 6,
+    "description": "4K UHD HDR monitor with eye-care technology.",
+    "specs": {
+      "resolution": "3840x2160",
+      "size": "32 inch",
+      "refreshRate": "60Hz",
+      "ports": ["HDMI", "DisplayPort", "USB-C"]
+    }
+  },
+  {
+    "name": "Philips 346E2CUAE",
+    "category": "monitor",
+    "brand": "Philips",
+    "price": 499.99,
+    "stock": 4,
+    "description": "34\" ultrawide curved monitor with USB-C and 100Hz refresh.",
+    "specs": {
+      "resolution": "3440x1440",
+      "size": "34 inch",
+      "refreshRate": "100Hz",
+      "ports": ["HDMI", "DisplayPort", "USB-C"]
+    }
+  }
+]

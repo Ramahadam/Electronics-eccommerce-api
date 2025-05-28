@@ -1,0 +1,25 @@
+create db in altas 
+create collection
+create products document
+fill dumps fields
+
+connect our nodjs to the monogdb
+
+create CRUD endpoints using postman
+get all products
+create product,
+get product
+update product
+delete product
+
+
+create controlerhandlers and organize them in one folder
+
+create route folder and organize products route
+
+create .env file 
+
+
+install mongoose
+create schema 
+create model
