@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# dotenv environment variables
+.env
+
+# production build
+dist/
+build/
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# coverage reports
+coverage/
+
+# system files
+.DS_Store
+Thumbs.db
