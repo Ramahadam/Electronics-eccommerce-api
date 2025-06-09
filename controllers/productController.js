@@ -2,10 +2,14 @@ const Product = require('../models/productModels');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    console.log(req.query);
+    let query = Product.find(req.query);
+
+    const products = await query;
 
     res.status(200).json({
       status: 'success',
+      length: products.length,
       data: {
         products,
       },
