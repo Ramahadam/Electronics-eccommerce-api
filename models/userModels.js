@@ -37,6 +37,8 @@ const userSchema = new Schema({
   },
 });
 
+// Mongoose pre save middleware
+
 userSchema.pre('save', async function (next) {
   //want to encrypt the password only if we create the filed or update password field.
   if (!this.isModified('password')) return next();
@@ -47,6 +49,13 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// Function to compare the hashed password with inputed password for login
+userSchema.method(
+  'correctPassowrd',
+  async function (candidatePassword, userPassword) {
+    return await bcrypt.compare(candidatePassword, userPassword);
+  }
+);
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
