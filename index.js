@@ -9,7 +9,9 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const productRouter = require('./routes/productRoutes');
+const userRouter = require('./routes/userRoutes');
 
 app.use('/api/v1/products', productRouter);
+app.use('/api/v1/users', userRouter);
 
 module.exports = app;
