@@ -23,3 +23,12 @@ create .env file
 install mongoose
 create schema 
 create model
+
+
+#TODO
+
+A)-Authentication 
+01- Implement signup functionality
+02- Implement login functionality
+03- Implement password reset /forgot password functionality
+

@@ -35,6 +35,10 @@ const userSchema = new Schema({
       message: `Password doesn't match`,
     },
   },
+  passwordChangedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 // Mongoose pre save middleware
@@ -50,12 +54,29 @@ userSchema.pre('save', async function (next) {
 });
 
 // Function to compare the hashed password with inputed password for login
-userSchema.method(
-  'correctPassowrd',
-  async function (candidatePassword, userPassword) {
-    return await bcrypt.compare(candidatePassword, userPassword);
+userSchema.methods.correctPassowrd = async function (
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.passwordChangedAfter = function (tokenIssueAt) {
+  if (!this.passwordChangedAt) {
+    return false;
   }
-);
+
+  if (this.passwordChangedAt) {
+    const passowrdChangeAtDb = parseInt(
+      this.passwordChangedAt.getTime() / 1000
+    );
+
+    return tokenIssueAt < passowrdChangeAtDb;
+  }
+
+  return false;
+};
+
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
