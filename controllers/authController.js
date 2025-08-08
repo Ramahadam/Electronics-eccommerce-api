@@ -16,6 +16,7 @@ exports.signup = async (req, res, next) => {
     password: req.body.password,
     email: req.body.email,
     passwordConfirm: req.body.passwordConfirm,
+    role: req.body.role,
   });
 
   // Create JSON webtoken and send the token to the client
@@ -98,4 +99,17 @@ exports.protect = async (req, res, next) => {
 
   req.user = currentUser;
   next();
+};
+
+exports.restrictTo = (restrcteDRole) => {
+  return (req, res, next) => {
+    if (req.user.role !== restrcteDRole) {
+      res.status(401).json({
+        status: 'failed',
+        message: 'forbiden you are not authorized to perform this task',
+      });
+    }
+
+    next();
+  };
 };

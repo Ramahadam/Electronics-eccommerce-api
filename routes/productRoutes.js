@@ -7,13 +7,21 @@ const router = express.Router();
 
 router
   .route('/')
-  .get(authController.protect, productController.getAllProducts)
-  .post(productController.createProduct);
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.getAllProducts
+  )
+  .post(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.createProduct
+  );
 
 router
   .route('/:id')
   .get(productController.getProduct)
-  .patch(productController.updateProduct)
-  .delete(productController.deleteProduct);
+  .patch(authController.protect, productController.updateProduct)
+  .delete(authController.protect, productController.deleteProduct);
 
 module.exports = router;
