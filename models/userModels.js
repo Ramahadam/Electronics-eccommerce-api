@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const { Schema } = mongoose;
 // ES5
@@ -44,6 +45,12 @@ const userSchema = new Schema({
     enum: ['customer', 'admin'],
     default: 'customer',
   },
+  passwordResetToken: {
+    type: String,
+  },
+  passwordResetExpire: {
+    type: Date,
+  },
 });
 
 // Mongoose pre save middleware
@@ -80,6 +87,23 @@ userSchema.methods.passwordChangedAfter = function (tokenIssueAt) {
   }
 
   return false;
+};
+
+// Create a token for password forgot/reset
+
+userSchema.methods.createPassworResetToken = function () {
+  // Creat token using cyrpto
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  // Encrypt the token and save the encyrpted token to db
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  this.passwordResetExpire = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);
