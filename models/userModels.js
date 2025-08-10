@@ -65,6 +65,19 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// Update passwored changedat
+
+userSchema.pre('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+
+  // Sometimes saving to DB is a bit slower than issue jsw so the user will not be able to login
+  // as the jaws time stamp will be so let's do a hack by subtracting 1 second.
+
+  this.passwordChangedAt = Date.now() - 1000;
+
+  next();
+});
+
 // Function to compare the hashed password with inputed password for login
 userSchema.methods.correctPassowrd = async function (
   candidatePassword,

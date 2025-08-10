@@ -1,7 +1,7 @@
 const User = require('../models/userModels');
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
-
+const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 
 function createToken(id) {
@@ -138,7 +138,7 @@ exports.forgotPassword = async (req, res, next) => {
   // Send the created token to the user email
   const resetUrl = `${req.protocol}://${req.get(
     'host'
-  )}/api/v1/forgotPassword/${resetToken}`;
+  )}/api/v1/resetpassword/${resetToken}`;
 
   const message = `Hello you are recieving this email for password resetHello!You are receiving this email because
    we received a password reset request for your account.click the link ${resetUrl} this password link will expired in 10 minutes`;
@@ -157,4 +157,51 @@ exports.forgotPassword = async (req, res, next) => {
   next();
 };
 
-exports.resetPassword = () => {};
+exports.resetPassword = async (req, res, next) => {
+  const resetToken = req.params.token;
+
+  // Check if the token exist
+  if (!resetToken) {
+    res.status(404).json({
+      status: 'failed',
+      message: 'Token not found',
+    });
+  }
+  // Encrypt the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  // Find the encrypted token in user documents
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpire: { $gte: Date.now() },
+  });
+  // Check if the password token is not expirey
+  if (!user) {
+    res.status(404).json({
+      status: 'failed',
+      message: 'Token does not exist or expired',
+    });
+  }
+  // Update the user password
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+
+  // Set the token and expiry time to undefined
+  user.passwordResetToken = undefined;
+  user.passwordResetExpire = undefined;
+
+  await user.save();
+  // Send JWT to the user
+
+  const jwtToken = createToken(user._id);
+
+  res.status(200).json({
+    status: 'success',
+    token: jwtToken,
+  });
+
+  next();
+};
