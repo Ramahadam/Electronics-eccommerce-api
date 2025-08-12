@@ -157,6 +157,7 @@ exports.forgotPassword = async (req, res, next) => {
   next();
 };
 
+// Reset password
 exports.resetPassword = async (req, res, next) => {
   const resetToken = req.params.token;
 
@@ -201,6 +202,40 @@ exports.resetPassword = async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     token: jwtToken,
+  });
+
+  next();
+};
+
+// Update password by user - option by entering current password.
+
+exports.updatePassword = async (req, res, next) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  const user = await User.findById(req.user.id).select('+password');
+  console.log(user);
+
+  const isCorrectPassword = await user.correctPassowrd(
+    currentPassword,
+    user.password
+  );
+
+  if (!user || !isCorrectPassword) {
+    res.status(404).json({
+      status: 'failed',
+      message: 'Incorrect password',
+    });
+  }
+
+  user.password = newPassword;
+  user.passwordConfirm = confirmPassword;
+  await user.save();
+
+  const token = createToken(user._id);
+
+  res.status(200).json({
+    status: 'success',
+    token,
   });
 
   next();
