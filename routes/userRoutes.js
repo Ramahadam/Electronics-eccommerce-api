@@ -22,6 +22,10 @@ router
   .route('/updatePassword')
   .post(authController.protect, authController.updatePassword);
 
+// Route to let the user update the details
+
+router.route('/updateMe').post(authController.protect, userController.updateMe);
+
 // Get all users / Create user
 router.route('/').get(userController.getUsers).post(userController.createUser);
 
