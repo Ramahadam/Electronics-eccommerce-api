@@ -1,4 +1,5 @@
 const Product = require('../models/productModels');
+const { uploadImage } = require('../utils/uploadImages');
 
 exports.getAllProducts = async (req, res) => {
   try {
@@ -41,6 +42,16 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
+    // TODO: You can use the below to upload photose to cloudinary then you have to insert the URL to db
+    // const imagePath =
+    //   'https://cloudinary-devs.github.io/cld-docs-assets/assets/images/happy_people.jpg';
+
+    // // Upload the image
+    // const publicId = await uploadImage(imagePath);
+    // console.log(publicId);
+
+    console.log(req.body);
+
     const newProduct = await Product.insertOne(req.body);
 
     res.status(201).json({

@@ -1,5 +1,7 @@
-// Require the cloudinary library
+// Require the cloudinary library for uploading images
 const cloudinary = require('cloudinary').v2;
+
+// Return "https" URLs by setting secure: true
 cloudinary.config({
   secure: true,
 });
@@ -7,7 +9,7 @@ cloudinary.config({
 /////////////////////////
 // Uploads an image file
 /////////////////////////
-export const uploadImage = async (imagePath) => {
+exports.uploadImage = async (imagePath) => {
   // Use the uploaded file's name as the asset's public ID and
   // allow overwriting the asset with new versions
   const options = {
