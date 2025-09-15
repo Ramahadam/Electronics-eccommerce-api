@@ -19,7 +19,7 @@ const productsSchema = new Schema({
     type: String,
     required: [true, 'Brand name is required'],
   },
-  price: Number,
+  unitPrice: Number,
   discount: {
     type: Number,
     validator: {
