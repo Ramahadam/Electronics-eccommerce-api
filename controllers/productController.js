@@ -1,5 +1,5 @@
 const Product = require('../models/productModels');
-const { uploadImage } = require('../utils/uploadImages');
+const { uploadImage } = require('../utils/uploadimages');
 
 exports.getAllProducts = async (req, res) => {
   try {
@@ -50,9 +50,23 @@ exports.createProduct = async (req, res) => {
     // const publicId = await uploadImage(imagePath);
     // console.log(publicId);
 
-    console.log(req.body);
+    // Just uploading below images to cloudinary for all products later on will get images from client
+    // As of now whenever we post new product same images will be uploaded and URLS will be store in DB
+    const images = [
+      './public/image1.png',
+      './public/image2.png',
+      './public/image3.jpg',
+      './public/image4.jpg',
+      './public/image5.png',
+    ];
 
-    const newProduct = await Product.insertOne(req.body);
+    const uploadedImages = await uploadImage(images);
+    console.log(uploadedImages);
+
+    const newProduct = await Product.insertOne({
+      ...req.body,
+      images: uploadedImages,
+    });
 
     res.status(201).json({
       status: 'success',

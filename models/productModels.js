@@ -38,7 +38,7 @@ const productsSchema = new Schema({
   description: {
     type: String,
     trim: true,
-    maxLength: [40, 'A product max length is 40 characters'],
+    maxLength: [100, 'A product max length is 100 characters'],
     minLength: [10, 'A product min length is 10 characters'],
   },
   specs: {

@@ -1,4 +1,4 @@
-import pLimit from 'p-limit';
+const pLimit = require('p-limit');
 
 // If you're uploading a large number of images, consider using a different upload
 // method like p-limit. This enables you to concurrently utilize promises while
@@ -20,11 +20,11 @@ cloudinary.config({
 exports.uploadImage = async (images) => {
   // Use the uploaded file's name as the asset's public ID and
   // allow overwriting the asset with new versions
-  const options = {
-    use_filename: true,
-    unique_filename: false,
-    overwrite: true,
-  };
+  // const options = {
+  //   use_filename: true,
+  //   unique_filename: false,
+  //   overwrite: true,
+  // };
 
   try {
     // Batch upload using p-limit
@@ -35,8 +35,9 @@ exports.uploadImage = async (images) => {
       });
     });
 
-    const uploads = await Promise.all(imagesUpload);
-    return uploads;
+    const res = await Promise.all(imagesUpload);
+    const arrOfImages = res.map((img) => img.secure_url);
+    return arrOfImages;
   } catch (error) {
     console.error(error);
   }
