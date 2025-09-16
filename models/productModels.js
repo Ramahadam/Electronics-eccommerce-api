@@ -10,7 +10,11 @@ const productsSchema = new Schema({
     maxLength: [40, 'A product max length is 40 characters'],
     minLength: [10, 'A product min length is 10 characters'],
   },
-  image: String,
+  images: [
+    {
+      type: String,
+    },
+  ],
   category: {
     type: String,
     enum: ['laptop', 'desktop', 'monitor'],
