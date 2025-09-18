@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const productsSchema = new Schema({
-  name: {
+  title: {
     type: String,
     required: [true, 'Product name is required'],
     trim: true,
@@ -24,7 +24,10 @@ const productsSchema = new Schema({
     type: String,
     required: [true, 'Brand name is required'],
   },
-  unitPrice: Number,
+  unitPrice: {
+    type: String,
+    required: [true, 'Unit price is required'],
+  },
   discount: {
     type: Number,
     validator: {
