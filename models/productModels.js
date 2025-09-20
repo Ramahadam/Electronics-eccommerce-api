@@ -17,7 +17,7 @@ const productsSchema = new Schema({
   ],
   category: {
     type: String,
-    enum: ['laptop', 'desktop', 'monitor'],
+    enum: ['laptop', 'desktop', 'cctv'],
   },
   avgRatings: Number,
   brand: {
@@ -44,12 +44,7 @@ const productsSchema = new Schema({
     maxLength: [100, 'A product max length is 100 characters'],
     minLength: [10, 'A product min length is 10 characters'],
   },
-  specs: {
-    cpu: String,
-    ram: String,
-    storage: String,
-    screen: String,
-  },
+  specs: { type: Schema.Types.Mixed, default: {} },
 });
 
 const Product = mongoose.model('Product', productsSchema);
