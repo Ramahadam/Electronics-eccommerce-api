@@ -47,6 +47,16 @@ const productsSchema = new Schema({
   specs: { type: Schema.Types.Mixed, default: {} },
 });
 
+// Duplicate the ID field.- output 'id' instead of '_id'
+productsSchema.virtual('id').get(function () {
+  return this._id.toHexString();
+});
+
+// Ensure virtual fields are serialised.
+productsSchema.set('toJSON', {
+  virtuals: true,
+});
+
 const Product = mongoose.model('Product', productsSchema);
 
 module.exports = Product;

@@ -53,9 +53,9 @@ exports.createProduct = async (req, res) => {
     // Just uploading below images to cloudinary for all products later on will get images from client
     // As of now whenever we post new product same images will be uploaded and URLS will be store in DB
     const images = [
-      './public/hickvision.png',
-      './public/hickvision.png',
-      './public/hickvision.png',
+      './public/dell-laptop.webp',
+      './public/dell-laptop2.webp',
+      './public/dell-laptop4.webp',
     ];
 
     const uploadedImages = await uploadImage(images);
@@ -97,6 +97,30 @@ exports.deleteProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
+    // TODO: You can use the below to upload photose to cloudinary then you have to insert the URL to db
+    // const imagePath =
+    //   'https://cloudinary-devs.github.io/cld-docs-assets/assets/images/happy_people.jpg';
+
+    // // Upload the image
+    // const publicId = await uploadImage(imagePath);
+    // console.log(publicId);
+
+    // Just uploading below images to cloudinary for all products later on will get images from client
+    // As of now whenever we post new product same images will be uploaded and URLS will be store in DB
+    // const images = [
+    //   './public/dell-laptop.webp',
+    //   './public/dell-laptop2.webp',
+    //   './public/dell-laptop4.webp',
+    // ];
+
+    // const uploadedImages = await uploadImage(images);
+    // console.log(uploadedImages);
+
+    // const newProduct = await Product.insertOne({
+    //   ...req.body,
+    //   images: uploadedImages,
+    // });
+
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,

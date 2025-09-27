@@ -7,10 +7,12 @@ const app = express();
 app.use(express.json());
 
 // Allow your Next.js frontend
-app.use(cors({ origin: 'http://localhost:3000' }));
-
-// OR allow all origins (not recommended for production)
-app.use(cors());
+app.use(
+  cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], // both just in case
+    credentials: true,
+  })
+);
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('tiny'));
