@@ -18,9 +18,7 @@ exports.getAllProducts = async (req, res) => {
   } catch (err) {
     res.status(404).json({
       status: 'failed',
-      message: {
-        err,
-      },
+      message: err.message,
     });
   }
 };
@@ -36,7 +34,12 @@ exports.getProduct = async (req, res) => {
       },
     });
   } catch (err) {
-    console.log(err);
+    res.status(404).json({
+      status: 'failed',
+      data: {
+        error: err.message,
+      },
+    });
   }
 };
 
