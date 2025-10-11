@@ -1,14 +1,16 @@
 const Wishlist = require('../models/wishlistModels');
 
 // GET ALL ITEMS FROM WISHLIST
-exports.getAllWishlistedItems = async (req, res, next) => {
+exports.getWishlist = async (req, res, next) => {
   try {
-    const wishlists = await Wishlist.find();
+    const userId = req.user;
+    console.log(userId);
+    const wishlists = await Wishlist.findOne({ user: userId });
 
-    if (!data) {
+    if (!wishlists) {
       return res.status(404).json({
         status: 'failed',
-        message: 'not found',
+        message: 'wishilist is empty',
       });
     }
 
@@ -24,14 +26,16 @@ exports.getAllWishlistedItems = async (req, res, next) => {
 };
 
 // ADD PRODUCT FROM WISHLIST
-exports.addProductToWishlist = async (req, res, next) => {
+exports.addToWishlist = async (req, res, next) => {
   try {
-    const { userId, productId } = req.body;
+    const user = req.user;
 
-    let wishlist = await Wishlist.findOne({ user: userId });
+    const { productId } = req.body;
+
+    let wishlist = await Wishlist.findOne({ user });
 
     if (!wishlist) {
-      wishlist = await Wishlist.create({ user: userId });
+      wishlist = await Wishlist.create({ user });
     }
 
     if (!wishlist.products.includes(productId)) {
@@ -51,20 +55,43 @@ exports.addProductToWishlist = async (req, res, next) => {
 };
 
 // REMOVE PRODUCT FROM WISHLIST
-exports.removeProductFormWishlist = async (req, res, next) => {
+exports.removeFromWishlist = async (req, res, next) => {
   try {
-    const wishlists = await Wishlist.findOneAndDelete();
+    const user = req.user;
+    const { productId } = req.body;
 
-    if (!data) {
+    let wishlists = await Wishlist.findOne({ user });
+
+    if (!wishlists) {
       return res.status(404).json({
-        status: 'failed',
-        message: 'not found',
+        status: 'Failed ',
+        message: 'No wishilist found',
       });
     }
 
+    // If there is wishilist check if the product exists .
+    if (wishlists.products) {
+      if (wishlists?.products?.includes(productId)) {
+        wishlists.removeItemFromWishlist(productId);
+
+        await wishlists.save();
+      }
+
+      if (!wishlists.products.length) {
+        await Wishlist.findByIdAndDelete({ _id: wishlists._id });
+        return res.status(200).json({
+          status: 'success',
+          message: 'wishilist is empty',
+        });
+      }
+    }
+
+    // If the product exists in the wishlish remove the product.
+    // If the product doesn't exist do nothing.
+
     res.status(200).json({
       status: 'success',
-      data: null,
+      data: wishlists,
     });
   } catch (error) {
     console.log(error);
