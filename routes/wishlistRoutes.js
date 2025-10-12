@@ -7,12 +7,10 @@ const router = express.Router();
 
 router
   .route('/')
-  .get(authController.protect, wihslistController.getWishlist)
-  .post(authController.protect, wihslistController.addToWishlist);
+  .get(wihslistController.getWishlist)
+  .post(wihslistController.addToWishlist);
 
 // Remove product from wishlist
-router
-  .route('/:productId')
-  .delete(authController.protect, wihslistController.removeFromWishlist);
+router.route('/:productId').delete(wihslistController.removeFromWishlist);
 
 module.exports = router;

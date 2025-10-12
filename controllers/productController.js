@@ -3,7 +3,7 @@ const { uploadImage } = require('../utils/uploadimages');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    console.log(req.query);
+    console.log(req.headers.authorization);
     let query = Product.find(req.query);
 
     const products = await query;

@@ -4,104 +4,126 @@ const { promisify } = require('util');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 
-function createToken(id) {
-  return jwt.sign({ id }, `${process.env.JWT_SECRET}`, {
-    expiresIn: `${process.env.JWT_EXPIRES_IN}`,
-  });
-}
+// function createToken(id) {
+//   return jwt.sign({ id }, `${process.env.JWT_SECRET}`, {
+//     expiresIn: `${process.env.JWT_EXPIRES_IN}`,
+//   });
+// }
 
-exports.signup = async (req, res, next) => {
-  // Create new user
-  const newUser = await User.create({
-    name: req.body.name,
-    photo: req.body.photo,
-    password: req.body.password,
-    email: req.body.email,
-    passwordConfirm: req.body.passwordConfirm,
-    role: req.body.role,
-  });
+// exports.signup = async (req, res, next) => {
+//   // Create new user
+//   const newUser = await User.create({
+//     name: req.body.name,
+//     photo: req.body.photo,
+//     password: req.body.password,
+//     email: req.body.email,
+//     passwordConfirm: req.body.passwordConfirm,
+//     role: req.body.role,
+//   });
 
-  // Create JSON webtoken and send the token to the client
-  const token = createToken(newUser._id);
+//   // Create JSON webtoken and send the token to the client
+//   const token = createToken(newUser._id);
 
-  res.status(201).json({
-    status: 'success',
-    data: {
-      user: newUser,
-    },
-    token,
-  });
-};
+//   res.status(201).json({
+//     status: 'success',
+//     data: {
+//       user: newUser,
+//     },
+//     token,
+//   });
+// };
 
-exports.login = async (req, res, next) => {
-  // Check if the email and passowrd field exists
-  const { email, password } = req.body;
+// exports.login = async (req, res, next) => {
+//   // Check if the email and passowrd field exists
+//   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Please provide email and password',
-    });
-  }
+//   if (!email || !password) {
+//     return res.status(400).json({
+//       status: 'fail',
+//       message: 'Please provide email and password',
+//     });
+//   }
 
-  // Check if the email exist in the collection - we are selecting password since it sets to false in schema
-  const user = await User.findOne({ email }).select('+password');
+//   // Check if the email exist in the collection - we are selecting password since it sets to false in schema
+//   const user = await User.findOne({ email }).select('+password');
 
-  const correct = await user.correctPassowrd(req.body.password, user.password);
+//   const correct = await user.correctPassowrd(req.body.password, user.password);
 
-  if (user && correct) {
-    const token = createToken(user._id);
+//   if (user && correct) {
+//     const token = createToken(user._id);
 
-    res.status(200).json({
-      status: 'success',
-      token,
-      data: null,
-    });
-  }
+//     res.status(200).json({
+//       status: 'success',
+//       token,
+//       data: null,
+//     });
+//   }
 
-  next();
-};
+//   next();
+// };
 
-exports.protect = async (req, res, next) => {
-  // 01) Getting token and check if it's there.
-  const { authorization } = req.headers;
-  let token;
+// exports.protect = async (req, res, next) => {
+//   // 01) Getting token and check if it's there.
+//   const { authorization } = req.headers;
+//   let token;
 
-  if (authorization && authorization.startsWith('Bearer')) {
-    token = authorization.split(' ')[1];
-  }
+//   if (authorization && authorization.startsWith('Bearer')) {
+//     token = authorization.split(' ')[1];
+//   }
 
-  if (!token) {
-    return res.status(404).json({
-      status: 'fail',
-      message: 'Token not found',
-    });
-  }
-  // 02) Verification of token to verify if the token exists
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+//   if (!token) {
+//     return res.status(404).json({
+//       status: 'fail',
+//       message: 'Token not found',
+//     });
+//   }
+//   // 02) Verification of token to verify if the token exists
+//   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  // 03) Check if the user still exists
-  const currentUser = await User.findById(decoded.id);
+//   // 03) Check if the user still exists
+//   const currentUser = await User.findById(decoded.id);
 
-  if (!currentUser) {
-    return res.status(404).json({
-      status: 'fail',
-      message: 'User doesn not exist any more',
-    });
-  }
-  const passwordHasChanged = currentUser.passwordChangedAfter(decoded.iat);
+//   if (!currentUser) {
+//     return res.status(404).json({
+//       status: 'fail',
+//       message: 'User doesn not exist any more',
+//     });
+//   }
+//   const passwordHasChanged = currentUser.passwordChangedAfter(decoded.iat);
 
-  // 04) Check if the user changed the password after the token was issued.
-  if (passwordHasChanged) {
-    res.status(400).json({
-      status: 'fail',
-      message: 'Password has been changed recently, please login again!!',
-    });
-  }
+//   // 04) Check if the user changed the password after the token was issued.
+//   if (passwordHasChanged) {
+//     res.status(400).json({
+//       status: 'fail',
+//       message: 'Password has been changed recently, please login again!!',
+//     });
+//   }
 
-  req.user = currentUser;
-  next();
-};
+//   req.user = currentUser;
+//   next();
+// };
+
+// middleware/authMiddleware.js
+
+// exports.verifyFirebaseToken = async (req, res, next) => {
+//   const authHeader = req.headers.authorization;
+//   if (!authHeader?.startsWith('Bearer ')) {
+//     return res.status(401).json({ error: 'No token provided' });
+//   }
+
+//   const token = authHeader.split('Bearer ')[1];
+
+//   console.log(token);
+
+//   try {
+//     const decodedToken = await admin.auth().verifyIdToken(token);
+//     req.user = decodedToken; // includes uid, email, etc.
+//     next();
+//   } catch (error) {
+//     console.error('Error verifying Firebase token:', error);
+//     res.status(401).json({ error: 'Invalid or expired token' });
+//   }
+// };
 
 exports.restrictTo = (restrctedRole) => {
   return (req, res, next) => {
