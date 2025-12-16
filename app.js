@@ -7,20 +7,18 @@ const app = express();
 app.use(express.json());
 
 // Allow your Next.js frontend
-app.use(
-  cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], // both just in case
-    credentials: true,
-  })
-);
+app.use(cors());
+
+app.options(/.*/, cors()); // include before other routes
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('tiny'));
 }
 
+// const userRouter = require('./routes/userRoutes');
 const productRouter = require('./routes/productRoutes');
-const userRouter = require('./routes/userRoutes');
 const wishlistRouter = require('./routes/wishlistRoutes');
+const reviewRouter = require('./routes/reviewRoutes');
 
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);

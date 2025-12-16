@@ -57,7 +57,7 @@ productsSchema.set('toJSON', {
   virtuals: true,
 });
 
-productsSchema.virtual({
+productsSchema.virtual('reviews', {
   reference: 'Review',
   localField: '_id',
   foreignField: 'product',
