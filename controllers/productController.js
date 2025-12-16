@@ -26,7 +26,6 @@ exports.getAllProducts = async (req, res) => {
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    console.log(req.headers.authorization);
 
     res.status(200).json({
       status: 'success',

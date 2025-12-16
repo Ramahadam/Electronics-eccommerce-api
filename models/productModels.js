@@ -53,14 +53,24 @@ const productsSchema = new Schema(
   }
 );
 
-productsSchema.set('toJSON', {
-  virtuals: true,
-});
-
 productsSchema.virtual('reviews', {
-  reference: 'Review',
+  ref: 'Review',
   localField: '_id',
   foreignField: 'product',
+});
+
+// Populate review and user on product find quires
+productsSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: 'reviews',
+    select: 'review rating user',
+    populate: {
+      path: 'user',
+      select: 'name photo -_id',
+    },
+  });
+
+  next();
 });
 
 const Product = mongoose.model('Product', productsSchema);

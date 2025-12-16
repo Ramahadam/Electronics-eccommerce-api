@@ -22,5 +22,6 @@ const reviewRouter = require('./routes/reviewRoutes');
 
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);
+app.use('/api/v1/reviews', reviewRouter);
 
 module.exports = app;

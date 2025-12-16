@@ -3,13 +3,17 @@ const { Schema } = mongoose;
 
 const reviewSchema = new Schema({
   product: {
-    type: mongoose.ObjectId,
+    type: Schema.Types.ObjectId,
+    ref: 'Product',
     required: true,
   },
+
   user: {
-    type: mongoose.ObjectId,
+    type: Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
   },
+
   rating: {
     type: Number,
     default: 4.5,
