@@ -19,3 +19,4 @@ coverage/
 # system files
 .DS_Store
 Thumbs.db
+step_by_step
