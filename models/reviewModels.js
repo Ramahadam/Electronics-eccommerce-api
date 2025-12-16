@@ -2,15 +2,21 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const reviewSchema = new Schema({
-  productId: {
+  product: {
     type: mongoose.ObjectId,
     required: true,
   },
-  userId: {
+  user: {
     type: mongoose.ObjectId,
     required: true,
   },
-  score: Number,
+  rating: {
+    type: Number,
+    default: 4.5,
+    max: [5, 'Maximum value must be 5'],
+    min: [1, 'Minimum value must be 1'],
+  },
+  review: String,
 });
 
 export const Review = mongoose.model('Review', reviewSchema);
