@@ -1,8 +1,10 @@
 const Review = require('../models/reviewModels');
 
+// Get all reviews on specific product
 exports.getAllReviews = async (req, res, next) => {
   try {
-    const reviews = await Review.find();
+    const { productId } = req.params;
+    const reviews = await Review.find({ product: productId });
 
     res.status(200).json({
       status: 'success',
@@ -16,9 +18,13 @@ exports.getAllReviews = async (req, res, next) => {
   }
 };
 
+// Get a review on specific product
+
 exports.createReview = async (req, res, next) => {
   try {
-    const newReview = await Review.create(req.body);
+    const product = req.params.productId;
+    console.log(product, req.body);
+    const newReview = await Review.create({ ...req.body, product });
 
     res.status(201).json({
       status: 'success',
@@ -33,8 +39,6 @@ exports.createReview = async (req, res, next) => {
     });
   }
 };
-
-exports.getReview = (req, res, next) => {};
 
 exports.updateReview = (req, res, next) => {};
 
