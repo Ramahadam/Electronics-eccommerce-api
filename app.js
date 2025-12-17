@@ -19,9 +19,11 @@ if (process.env.NODE_ENV === 'development') {
 const productRouter = require('./routes/productRoutes');
 const wishlistRouter = require('./routes/wishlistRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);
 app.use('/api/v1/reviews', reviewRouter);
+app.use('/api/v1/cart', cartRoutes);
 
 module.exports = app;
