@@ -73,6 +73,10 @@ productsSchema.pre(/^find/, function (next) {
   next();
 });
 
+// Create index for search perofrmance optimization
+// create compound index
+productsSchema.index({ title: 'text', description: 'text' });
+
 const Product = mongoose.model('Product', productsSchema);
 
 module.exports = Product;

@@ -85,6 +85,23 @@ if (!updatedReview) {
 };
 
 exports.deleteReview = async (req, res, next) => {
+  // TODO Crucially, you add a second check to ensure the user making the request owns the review before deelteing it:
+  /**
+ * const reviewId = req.params.id;
+const userIdFromToken = req.user.id; // Added by middleware
+
+const updatedReview = await ReviewModel.findOneAndDelete(
+    { _id: reviewId, userId: userIdFromToken }, // <-- Check ownership here
+    req.body,
+    { new: true, runValidators: true }
+);
+
+if (!updatedReview) {
+    // If null, either the review doesn't exist OR the current user doesn't own it
+    return res.status(404).json({ message: "Review not found or user not authorized" });
+}
+ */
+
   try {
     const deletedReview = await Review.findByIdAndDelete(req.params.id, {
       runValidators: true,

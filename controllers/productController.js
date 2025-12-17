@@ -1,12 +1,13 @@
 const Product = require('../models/productModels');
 const { uploadImage } = require('../utils/uploadimages');
+const { filterQuery } = require('../utils/filterQuery');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    console.log(req.headers.authorization);
-    let query = Product.find(req.query);
+    // Refactor the query filter and sort to it's own function
+    let { filter, sort } = filterQuery(req.query);
 
-    const products = await query;
+    const products = await Product.find(filter).sort(sort);
 
     res.status(200).json({
       status: 'success',
