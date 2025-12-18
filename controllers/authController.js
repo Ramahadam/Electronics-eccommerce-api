@@ -1,8 +1,10 @@
 const User = require('../models/userModels');
-const jwt = require('jsonwebtoken');
-const { promisify } = require('util');
+// const jwt = require('jsonwebtoken');
+// const { promisify } = require('util');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
+
+const admin = require('../lib/firebase/firebase.config');
 
 // function createToken(id) {
 //   return jwt.sign({ id }, `${process.env.JWT_SECRET}`, {
@@ -62,46 +64,29 @@ const sendEmail = require('../utils/sendEmail');
 //   next();
 // };
 
-// exports.protect = async (req, res, next) => {
-//   // 01) Getting token and check if it's there.
-//   const { authorization } = req.headers;
-//   let token;
+exports.protect = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Not logged in' });
 
-//   if (authorization && authorization.startsWith('Bearer')) {
-//     token = authorization.split(' ')[1];
-//   }
+    const decoded = await admin.auth().verifyIdToken(token);
 
-//   if (!token) {
-//     return res.status(404).json({
-//       status: 'fail',
-//       message: 'Token not found',
-//     });
-//   }
-//   // 02) Verification of token to verify if the token exists
-//   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+    let user = await User.findOne({ firebaseUid: decoded.uid });
+    if (!user) {
+      user = await User.create({
+        firebaseUid: decoded.uid,
+        email: decoded.email,
+      });
+    }
 
-//   // 03) Check if the user still exists
-//   const currentUser = await User.findById(decoded.id);
+    req.auth = decoded;
+    req.user = user;
 
-//   if (!currentUser) {
-//     return res.status(404).json({
-//       status: 'fail',
-//       message: 'User doesn not exist any more',
-//     });
-//   }
-//   const passwordHasChanged = currentUser.passwordChangedAfter(decoded.iat);
-
-//   // 04) Check if the user changed the password after the token was issued.
-//   if (passwordHasChanged) {
-//     res.status(400).json({
-//       status: 'fail',
-//       message: 'Password has been changed recently, please login again!!',
-//     });
-//   }
-
-//   req.user = currentUser;
-//   next();
-// };
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid or expired token' });
+  }
+};
 
 // middleware/authMiddleware.js
 

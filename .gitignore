@@ -20,3 +20,9 @@ coverage/
 .DS_Store
 Thumbs.db
 step_by_step
+
+firebase-service-account.json
+
+
+config.env
+config.env

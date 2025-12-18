@@ -3,7 +3,7 @@ const Product = require('../models/productModels');
 const productController = require('../controllers/productController');
 const reviewController = require('../controllers/reviewController');
 
-// const authController = require('../controllers/authController');
+const authController = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -14,6 +14,7 @@ const router = express.Router();
 //     authController.restrictTo('admin'),
 //     productController.getAllProducts
 //   )
+
 router
   .route('/')
   .get(productController.getAllProducts)
@@ -21,7 +22,7 @@ router
 
 router
   .route('/:id')
-  .get(productController.getProduct)
+  .get(authController.protect, productController.getProduct)
   .patch(productController.updateProduct)
   .delete(productController.deleteProduct);
 
