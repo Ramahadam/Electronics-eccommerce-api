@@ -1,124 +1,54 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-
-const { Schema } = mongoose;
-// ES5
 const validator = require('validator');
 
-const userSchema = new Schema({
-  name: {
-    required: [true, 'Please provide name'],
-    minLength: 8,
-    type: String,
-  },
-  email: {
-    type: String,
-    required: [true, 'Please provide email id'],
-    unique: [true, 'Email must be unique'],
-    lowercase: true,
-    trim: true,
-    validate: [validator.isEmail, 'Please enter valid email address'],
-  },
-  photo: String,
-  password: {
-    type: String,
-    required: [true, 'Please provide password'],
-    select: false,
-  },
-  passwordConfirm: {
-    type: String,
-    required: [true, 'Please confirm the password'],
-    validate: {
-      validator: function (el) {
-        return el === this.password;
-      },
-      message: `Password doesn't match`,
+const userSchema = new mongoose.Schema(
+  {
+    firebaseUid: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+
+    name: {
+      type: String,
+      trim: true,
+      minlength: 3,
+      maxlength: 50,
+    },
+
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      validate: [validator.isEmail, 'Please enter a valid email address'],
+      index: true,
+    },
+
+    photo: {
+      type: String,
+    },
+
+    role: {
+      type: String,
+      enum: ['customer', 'admin'],
+      default: 'customer',
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+      select: false,
+    },
+
+    lastLoginAt: {
+      type: Date,
     },
   },
-  passwordChangedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  role: {
-    type: String,
-    enum: ['customer', 'admin'],
-    default: 'customer',
-  },
-  passwordResetToken: {
-    type: String,
-  },
-  passwordResetExpire: {
-    type: Date,
-  },
-});
-
-// Mongoose pre save middleware
-
-userSchema.pre('save', async function (next) {
-  //want to encrypt the password only if we create the filed or update password field.
-  if (!this.isModified('password')) return next();
-
-  this.password = await bcrypt.hash(this.password, 12);
-  this.passwordConfirm = undefined;
-
-  next();
-});
-
-// Update passwored changedat
-
-userSchema.pre('save', function (next) {
-  if (!this.isModified('password') || this.isNew) return next();
-
-  // Sometimes saving to DB is a bit slower than issue jsw so the user will not be able to login
-  // as the jaws time stamp will be so let's do a hack by subtracting 1 second.
-
-  this.passwordChangedAt = Date.now() - 1000;
-
-  next();
-});
-
-// Function to compare the hashed password with inputed password for login
-userSchema.methods.correctPassowrd = async function (
-  candidatePassword,
-  userPassword
-) {
-  return await bcrypt.compare(candidatePassword, userPassword);
-};
-
-userSchema.methods.passwordChangedAfter = function (tokenIssueAt) {
-  if (!this.passwordChangedAt) {
-    return false;
+  {
+    timestamps: true, // createdAt, updatedAt
   }
-
-  if (this.passwordChangedAt) {
-    const passowrdChangeAtDb = parseInt(
-      this.passwordChangedAt.getTime() / 1000
-    );
-
-    return tokenIssueAt < passowrdChangeAtDb;
-  }
-
-  return false;
-};
-
-// Create a token for password forgot/reset
-
-userSchema.methods.createPassworResetToken = function () {
-  // Creat token using cyrpto
-  const resetToken = crypto.randomBytes(32).toString('hex');
-
-  // Encrypt the token and save the encyrpted token to db
-  this.passwordResetToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-
-  this.passwordResetExpire = Date.now() + 10 * 60 * 1000;
-
-  return resetToken;
-};
+);
 
 const User = mongoose.model('User', userSchema);
-
 module.exports = User;

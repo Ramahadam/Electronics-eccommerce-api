@@ -72,6 +72,7 @@ exports.protect = async (req, res, next) => {
     const decoded = await admin.auth().verifyIdToken(token);
 
     let user = await User.findOne({ firebaseUid: decoded.uid });
+
     if (!user) {
       user = await User.create({
         firebaseUid: decoded.uid,
