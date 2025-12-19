@@ -1,30 +1,31 @@
 const User = require('../models/userModels');
-// const jwt = require('jsonwebtoken');
-// const { promisify } = require('util');
+
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 
 const admin = require('../lib/firebase/firebase.config');
 
-// function createToken(id) {
-//   return jwt.sign({ id }, `${process.env.JWT_SECRET}`, {
-//     expiresIn: `${process.env.JWT_EXPIRES_IN}`,
-//   });
-// }
+const verifyToken = async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  const decoded = await admin.auth().verifyIdToken(token);
+
+  if (!token || !decoded) {
+    return res
+      .status(401)
+      .json({ message: 'Invalid token or failed to verify token' });
+  }
+
+  return { decoded, token };
+};
 
 // exports.signup = async (req, res, next) => {
-//   // Create new user
-//   const newUser = await User.create({
-//     name: req.body.name,
-//     photo: req.body.photo,
-//     password: req.body.password,
-//     email: req.body.email,
-//     passwordConfirm: req.body.passwordConfirm,
-//     role: req.body.role,
-//   });
+//   // Verify the token
+
+//   const { decoded } = await verifyToken(req, res);
+
+//   // Create new user in mongodb
 
 //   // Create JSON webtoken and send the token to the client
-//   const token = createToken(newUser._id);
 
 //   res.status(201).json({
 //     status: 'success',
@@ -35,41 +36,9 @@ const admin = require('../lib/firebase/firebase.config');
 //   });
 // };
 
-// exports.login = async (req, res, next) => {
-//   // Check if the email and passowrd field exists
-//   const { email, password } = req.body;
-
-//   if (!email || !password) {
-//     return res.status(400).json({
-//       status: 'fail',
-//       message: 'Please provide email and password',
-//     });
-//   }
-
-//   // Check if the email exist in the collection - we are selecting password since it sets to false in schema
-//   const user = await User.findOne({ email }).select('+password');
-
-//   const correct = await user.correctPassowrd(req.body.password, user.password);
-
-//   if (user && correct) {
-//     const token = createToken(user._id);
-
-//     res.status(200).json({
-//       status: 'success',
-//       token,
-//       data: null,
-//     });
-//   }
-
-//   next();
-// };
-
 exports.protect = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Not logged in' });
-
-    const decoded = await admin.auth().verifyIdToken(token);
+    const { decoded } = await verifyToken(req);
 
     let user = await User.findOne({ firebaseUid: decoded.uid });
 
