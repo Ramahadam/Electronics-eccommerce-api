@@ -16,11 +16,13 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // const userRouter = require('./routes/userRoutes');
+const authRouter = require('./routes/authRoutes');
 const productRouter = require('./routes/productRoutes');
 const wishlistRouter = require('./routes/wishlistRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 
+app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);
 app.use('/api/v1/reviews', reviewRouter);

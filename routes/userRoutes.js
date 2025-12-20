@@ -35,4 +35,6 @@
 //   .patch(userController.updateUser)
 //   .delete(userController.deleteUser);
 
+//TODO CREATE SYNC ROUTE /api/v1/auth/sync
+
 // module.exports = router;

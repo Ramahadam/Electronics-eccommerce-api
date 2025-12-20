@@ -9,52 +9,65 @@ const verifyToken = async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   const decoded = await admin.auth().verifyIdToken(token);
 
-  if (!token || !decoded) {
-    return res
-      .status(401)
-      .json({ message: 'Invalid token or failed to verify token' });
-  }
-
   return { decoded, token };
 };
 
-// exports.signup = async (req, res, next) => {
-//   // Verify the token
-
-//   const { decoded } = await verifyToken(req, res);
-
-//   // Create new user in mongodb
-
-//   // Create JSON webtoken and send the token to the client
-
-//   res.status(201).json({
-//     status: 'success',
-//     data: {
-//       user: newUser,
-//     },
-//     token,
-//   });
-// };
-
 exports.protect = async (req, res, next) => {
   try {
-    const { decoded } = await verifyToken(req);
+    const { decoded, token } = await verifyToken(req);
 
-    let user = await User.findOne({ firebaseUid: decoded.uid });
-
-    if (!user) {
-      user = await User.create({
-        firebaseUid: decoded.uid,
-        email: decoded.email,
-      });
+    if (!token || !decoded) {
+      return res
+        .status(401)
+        .json({ message: 'Invalid token or failed to verify token' });
     }
 
     req.auth = decoded;
-    req.user = user;
-
+    req.firebaseUid = decoded.uid;
+    console.log('reached protect route');
+    console.log(req.firebaseUid);
     next();
   } catch (err) {
     res.status(401).json({ message: 'Invalid or expired token' });
+  }
+};
+
+exports.syncUser = async (req, res, next) => {
+  console.log('Reached sync user');
+
+  try {
+    console.log(req.firebaseUid);
+
+    if (!req.firebaseUid) {
+      res.status('failed').json({
+        status: 'failed',
+        err: 'Firebase user id not found',
+      });
+    }
+
+    let user = await User.find({ firebaseUid: req.firebaseUid });
+
+    if (!user.length) {
+      user = await User.create({
+        firebaseUid: req.auth.uid,
+        email: req.auth.email,
+      });
+
+      res.status(201).json({
+        status: 'success',
+        user,
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      user,
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'failed',
+      err,
+    });
   }
 };
 

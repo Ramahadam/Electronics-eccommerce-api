@@ -18,13 +18,25 @@ const router = express.Router();
 router
   .route('/')
   .get(productController.getAllProducts)
-  .post(productController.createProduct);
+  .post(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.createProduct
+  );
 
 router
   .route('/:id')
-  .get(authController.protect, productController.getProduct)
-  .patch(productController.updateProduct)
-  .delete(productController.deleteProduct);
+  .get(productController.getProduct)
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.updateProduct
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.deleteProduct
+  );
 
 // Nested routes for product review
 // GET /products/:productId/reviews
@@ -32,6 +44,6 @@ router
 router
   .route('/:productId/reviews')
   .get(reviewController.getAllReviews)
-  .post(reviewController.createReview);
+  .post(authController.protect, reviewController.createReview);
 
 module.exports = router;
