@@ -77,6 +77,12 @@ productsSchema.pre(/^find/, function (next) {
 // create compound index
 productsSchema.index({ title: 'text', description: 'text' });
 
+productsSchema.pre(/^find/, function (next) {
+  this.select('-_id -__v');
+
+  next();
+});
+
 const Product = mongoose.model('Product', productsSchema);
 
 module.exports = Product;
