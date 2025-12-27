@@ -78,7 +78,7 @@ productsSchema.pre(/^find/, function (next) {
 productsSchema.index({ title: 'text', description: 'text' });
 
 productsSchema.pre(/^find/, function (next) {
-  this.select('-_id -__v');
+  this.select('-__v');
 
   next();
 });

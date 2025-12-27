@@ -10,10 +10,10 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
-    name: {
+    fullname: {
       type: String,
       trim: true,
-      minlength: 3,
+      minlength: 4,
       maxlength: 50,
     },
 

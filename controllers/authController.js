@@ -51,6 +51,7 @@ exports.syncUser = async (req, res, next) => {
       user = await User.create({
         firebaseUid: req.auth.uid,
         email: req.auth.email,
+        fullname: req.body.fullname,
       });
 
       res.status(201).json({
