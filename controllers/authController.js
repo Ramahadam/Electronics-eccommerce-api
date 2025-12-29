@@ -24,75 +24,57 @@ exports.protect = async (req, res, next) => {
 
     req.auth = decoded;
     req.firebaseUid = decoded.uid;
-    console.log('reached protect route');
-    console.log(req.firebaseUid);
+
     next();
   } catch (err) {
     res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 
-exports.syncUser = async (req, res, next) => {
-  console.log('Reached sync user');
-
+exports.syncUser = async (req, res) => {
   try {
-    console.log(req.firebaseUid);
-
     if (!req.firebaseUid) {
-      res.status('failed').json({
+      return res.status(401).json({
         status: 'failed',
-        err: 'Firebase user id not found',
+        message: 'Unauthorized',
       });
     }
 
-    let user = await User.find({ firebaseUid: req.firebaseUid });
+    const fullname = req?.body?.fullname || req?.auth?.name || null;
 
-    if (!user.length) {
+    let user = await User.findOne({ firebaseUid: req.firebaseUid });
+
+    // Create user if not exists
+    if (!user) {
       user = await User.create({
         firebaseUid: req.auth.uid,
         email: req.auth.email,
-        fullname: req.body.fullname,
+        fullname, // Google displayName fallback
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         status: 'success',
         user,
       });
     }
 
-    res.status(200).json({
+    // Optional patch: fill missing fullname later
+    if (!user.fullname && fullname) {
+      user.fullname = fullname;
+      await user.save();
+    }
+
+    return res.status(200).json({
       status: 'success',
       user,
     });
   } catch (err) {
-    res.status(400).json({
+    return res.status(400).json({
       status: 'failed',
-      err,
+      err: err,
     });
   }
 };
-
-// middleware/authMiddleware.js
-
-// exports.verifyFirebaseToken = async (req, res, next) => {
-//   const authHeader = req.headers.authorization;
-//   if (!authHeader?.startsWith('Bearer ')) {
-//     return res.status(401).json({ error: 'No token provided' });
-//   }
-
-//   const token = authHeader.split('Bearer ')[1];
-
-//   console.log(token);
-
-//   try {
-//     const decodedToken = await admin.auth().verifyIdToken(token);
-//     req.user = decodedToken; // includes uid, email, etc.
-//     next();
-//   } catch (error) {
-//     console.error('Error verifying Firebase token:', error);
-//     res.status(401).json({ error: 'Invalid or expired token' });
-//   }
-// };
 
 exports.restrictTo = (restrctedRole) => {
   return (req, res, next) => {
@@ -204,7 +186,6 @@ exports.updatePassword = async (req, res, next) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
 
   const user = await User.findById(req.user.id).select('+password');
-  console.log(user);
 
   const isCorrectPassword = await user.correctPassowrd(
     currentPassword,
