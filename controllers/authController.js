@@ -31,6 +31,13 @@ exports.protect = async (req, res, next) => {
   }
 };
 
+exports.appendUserId = async (req, res, next) => {
+  let user = await User.findOne({ firebaseUid: req.firebaseUid });
+
+  req.userId = user.id;
+  next();
+};
+
 exports.syncUser = async (req, res) => {
   try {
     if (!req.firebaseUid) {

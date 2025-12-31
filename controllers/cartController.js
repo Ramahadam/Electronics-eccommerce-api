@@ -1,14 +1,14 @@
 // controllers/cartController.js
 const Cart = require('../models/cartModels');
+const User = require('../models/userModels');
 // const Product = require('../models/productModels');
 
 // GET /api/cart
 exports.getCart = async (req, res) => {
   try {
     // TODO change the req.user later once you integrate to firebase auth Cart.findOne({ user: req.user.id })
-    const tempUserid = '6849d16de314ed642e9feff8';
 
-    const cart = await Cart.findOne({ user: tempUserid }).populate(
+    const cart = await Cart.findOne({ user: req.userId }).populate(
       'items.product'
     );
     if (!cart) return res.status(200).json({ items: [], totalPrice: 0 });
@@ -26,18 +26,16 @@ exports.getCart = async (req, res) => {
 // POST /api/cart
 exports.addToCart = async (req, res) => {
   try {
-    const {
-      productId,
-      quantity = 1,
-      tempUserid = '6849d16de314ed642e9feff8',
-    } = req.body;
+    const { productId, quantity = 1 } = req.body;
     // TODO change the req.user later once you integrate to firebase auth
 
-    let cart = await Cart.findOne({ user: tempUserid });
+    // const firebaseUid = req.firebaseUid;
+
+    let cart = await Cart.findOne({ user: req.userId });
 
     if (!cart) {
       cart = await Cart.create({
-        user: tempUserid,
+        user: req.userId,
         items: [{ product: productId, quantity }],
       });
     } else {
@@ -76,9 +74,10 @@ exports.updateCartItem = async (req, res) => {
     const { itemId } = req.params;
 
     // TODO change the req.user later once you integrate to firebase auth Cart.findOne({ user: req.user.id })
-    const tempUserid = '6849d16de314ed642e9feff8';
+    // const tempUserid = '6849d16de314ed642e9feff8';
+    // const firebaseUid = req.firebaseUid;
 
-    const cart = await Cart.findOne({ user: tempUserid });
+    const cart = await Cart.findOne({ user: req.userId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
 
     const itemIndex = cart.items.findIndex(
@@ -107,10 +106,11 @@ exports.updateCartItem = async (req, res) => {
 exports.removeCartItem = async (req, res) => {
   try {
     // TODO change the req.user later once you integrate to firebase auth Cart.findOne({ user: req.user.id })
-    const tempUserid = '6849d16de314ed642e9feff8';
+    // const tempUserid = '6849d16de314ed642e9feff8';
+    // const firebaseUid = req.firebaseUid;
 
     const { itemId } = req.params;
-    const cart = await Cart.findOne({ user: tempUserid });
+    const cart = await Cart.findOne({ user: req.userId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
 
     cart.items = cart.items.filter(
