@@ -15,7 +15,8 @@ exports.getCart = async (req, res) => {
     res.status(200).json({
       status: 'succes',
       data: {
-        cart,
+        items: cart.items,
+        totalPrice: cart.totalPrice,
       },
     });
   } catch (err) {
