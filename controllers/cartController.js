@@ -7,8 +7,6 @@ const User = require('../models/userModels');
 // GET /api/cart
 exports.getCart = async (req, res) => {
   try {
-    // TODO change the req.user later once you integrate to firebase auth Cart.findOne({ user: req.user.id })
-
     const cart = await Cart.findOne({ user: req.userId }).populate(
       'items.product'
     );
@@ -124,16 +122,14 @@ exports.updateCartItem = async (req, res) => {
 // DELETE /api/cart/:itemId
 exports.removeCartItem = async (req, res) => {
   try {
-    // TODO change the req.user later once you integrate to firebase auth Cart.findOne({ user: req.user.id })
-    // const tempUserid = '6849d16de314ed642e9feff8';
-    // const firebaseUid = req.firebaseUid;
+    const { productId } = req.body;
 
-    const { itemId } = req.params;
     const cart = await Cart.findOne({ user: req.userId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
+    console.log(cart);
 
     cart.items = cart.items.filter(
-      (item) => item.product.toString() !== itemId
+      (item) => item.product.toString() !== productId
     );
     // save the cart with new items
     cart.totalPrice = await cart.calculateTotalPrice(cart.items);
@@ -141,9 +137,17 @@ exports.removeCartItem = async (req, res) => {
 
     res.status(204).json({
       status: 'succes',
-      data: null,
+      data: {
+        cart,
+      },
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to remove cart item' });
+    res.status(500).json({
+      status: 'Failed',
+      error: {
+        message: 'Could not remove item from cart',
+        err,
+      },
+    });
   }
 };
