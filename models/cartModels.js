@@ -14,6 +14,10 @@ const cartItemSchema = new Schema({
     default: 1,
     min: [1, 'Quantity cannot be less than 1'],
   },
+  unitPrice: {
+    type: Number,
+    require: [true, 'Unit price is require'],
+  },
 });
 
 const cartSchema = new Schema(
@@ -53,9 +57,11 @@ cartSchema.set('toObject', {
 });
 
 cartSchema.methods.calculateTotalPrice = function () {
-  return this.items.reduce((total, item) => {
-    return total + item.product.unitPrice * item.quantity;
+  const totalPrice = this.items.reduce((total, item) => {
+    return total + Number(item.unitPrice) * item.quantity;
   }, 0);
+
+  return totalPrice;
 };
 
 const Cart = mongoose.model('Cart', cartSchema);

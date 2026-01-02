@@ -1,5 +1,6 @@
 // controllers/cartController.js
 const Cart = require('../models/cartModels');
+const Product = require('../models/productModels');
 const User = require('../models/userModels');
 // const Product = require('../models/productModels');
 
@@ -28,16 +29,28 @@ exports.getCart = async (req, res) => {
 exports.addToCart = async (req, res) => {
   try {
     const { productId, quantity = 1 } = req.body;
-    // TODO change the req.user later once you integrate to firebase auth
-
-    // const firebaseUid = req.firebaseUid;
 
     let cart = await Cart.findOne({ user: req.userId });
+
+    const product = await Product.findById(productId).select('unitPrice');
+
+    if (!product) {
+      res.status(401).json({
+        status: 'Failed',
+        err: 'No product found',
+      });
+    }
 
     if (!cart) {
       cart = await Cart.create({
         user: req.userId,
-        items: [{ product: productId, quantity }],
+        items: [
+          {
+            product: productId,
+            quantity,
+            unitPrice: Number(product.unitPrice),
+          },
+        ],
       });
     } else {
       const itemIndex = cart.items.findIndex(
@@ -47,20 +60,25 @@ exports.addToCart = async (req, res) => {
       if (itemIndex > -1) {
         cart.items[itemIndex].quantity += quantity;
       } else {
-        cart.items.push({ product: productId, quantity });
+        cart.items.push({
+          product: productId,
+          quantity,
+          unitPrice: Number(product.unitPrice),
+        });
       }
     }
 
     cart.totalPrice = await cart.calculateTotalPrice(cart.items);
-    await cart.save();
+    const newCart = await cart.save();
 
     res.status(200).json({
       status: 'succes',
       data: {
-        cart,
+        cart: newCart,
       },
     });
   } catch (err) {
+    // console.log(err);
     res.status(500).json({
       status: 'error',
       err,
