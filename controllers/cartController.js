@@ -12,7 +12,7 @@ exports.getCart = async (req, res) => {
     );
     if (!cart) return res.status(200).json({ items: [], totalPrice: 0 });
     res.status(200).json({
-      status: 'succes',
+      status: 'success',
       data: {
         items: cart.items,
         totalPrice: cart.totalPrice,
@@ -70,7 +70,7 @@ exports.addToCart = async (req, res) => {
     const newCart = await cart.save();
 
     res.status(200).json({
-      status: 'succes',
+      status: 'success',
       data: {
         cart: newCart,
       },
@@ -109,7 +109,7 @@ exports.updateCartItem = async (req, res) => {
     await cart.save();
 
     res.status(200).json({
-      status: 'success',
+      status: 'successs',
       data: {
         cart,
       },
@@ -136,7 +136,7 @@ exports.removeCartItem = async (req, res) => {
     await cart.save();
 
     res.status(204).json({
-      status: 'succes',
+      status: 'successs',
       data: {
         cart,
       },
