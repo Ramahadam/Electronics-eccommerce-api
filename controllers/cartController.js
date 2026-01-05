@@ -99,7 +99,14 @@ exports.updateCartItem = async (req, res) => {
 
     if (itemIndex < 0) return res.status(404).json({ error: 'Item not found' });
 
-    cart.items[itemIndex].quantity = quantity;
+    if (quantity <= 0) {
+      cart.items = cart.items.filter(
+        (item) => item.product.toString() !== itemId
+      );
+    } else {
+      cart.items[itemIndex].quantity = quantity;
+    }
+
     cart.totalPrice = await cart.calculateTotalPrice(cart.items);
 
     await cart.save();
@@ -111,7 +118,10 @@ exports.updateCartItem = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update cart item' });
+    res.status(500).json({
+      status: 'failed',
+      error: 'Something went worng',
+    });
   }
 };
 
