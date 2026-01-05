@@ -90,10 +90,6 @@ exports.updateCartItem = async (req, res) => {
     const { quantity } = req.body;
     const { itemId } = req.params;
 
-    // TODO change the req.user later once you integrate to firebase auth Cart.findOne({ user: req.user.id })
-    // const tempUserid = '6849d16de314ed642e9feff8';
-    // const firebaseUid = req.firebaseUid;
-
     const cart = await Cart.findOne({ user: req.userId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
 
