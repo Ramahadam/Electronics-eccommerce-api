@@ -13,6 +13,6 @@ router.use(authController.appendUserId);
 router.get('/', cartController.getCart);
 router.post('/', cartController.addToCart);
 router.patch('/:itemId', cartController.updateCartItem);
-router.delete('/', cartController.removeCartItem);
-
+router.delete('/:itemId', cartController.removeCartItem);
+router.delete('/', cartController.clearCart);
 module.exports = router;

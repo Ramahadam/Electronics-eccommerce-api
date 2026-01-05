@@ -151,3 +151,41 @@ exports.removeCartItem = async (req, res) => {
     });
   }
 };
+
+//Delete items from cart
+
+exports.clearCart = async (req, res) => {
+  try {
+    const userId = req.userId; // from auth middleware
+
+    const cart = await Cart.findOneAndUpdate(
+      { user: userId },
+      {
+        $set: {
+          items: [],
+          totalPrice: 0,
+        },
+      },
+      { new: true }
+    );
+
+    if (!cart) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Cart not found',
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        cart,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to clear cart',
+    });
+  }
+};
