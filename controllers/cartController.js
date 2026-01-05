@@ -122,14 +122,13 @@ exports.updateCartItem = async (req, res) => {
 // DELETE /api/cart/:itemId
 exports.removeCartItem = async (req, res) => {
   try {
-    const { productId } = req.body;
+    const { itemId } = req.params;
 
     const cart = await Cart.findOne({ user: req.userId });
     if (!cart) return res.status(404).json({ error: 'Cart not found' });
-    console.log(cart);
 
     cart.items = cart.items.filter(
-      (item) => item.product.toString() !== productId
+      (item) => item.product.toString() !== itemId
     );
     // save the cart with new items
     cart.totalPrice = await cart.calculateTotalPrice(cart.items);
