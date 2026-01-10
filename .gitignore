@@ -21,8 +21,10 @@ coverage/
 Thumbs.db
 step_by_step
 
-firebase-service-account.json
+scripts/
 
 
 config.env
 config.env
+
+deleteAllFirebaseUsers
