@@ -22,7 +22,6 @@ async function deleteAllUsers(nextPageToken) {
     await deleteAllUsers(listUsersResult.pageToken);
   }
 }
-fafas;
 
 deleteAllUsers()
   .then(() => console.log('✅ All users deleted'))
