@@ -23,6 +23,7 @@ step_by_step
 
 scripts/
 
+firebase-service-account
 
 config.env
 config.env
