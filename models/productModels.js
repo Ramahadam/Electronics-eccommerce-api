@@ -18,27 +18,43 @@ const productsSchema = new Schema(
     ],
     category: {
       type: String,
-      enum: ['laptop', 'desktop', 'cctv'],
+      required: [true, 'Product category is required'],
+      enum: {
+        values: ['laptop', 'desktop', 'cctv'],
+        message: '{VALUE} is not a valid category',
+      },
     },
-    avgRsatings: Number,
+    avgRatings: Number,
     brand: {
       type: String,
       required: [true, 'Brand name is required'],
     },
     unitPrice: {
-      type: String,
+      type: Number,
       required: [true, 'Unit price is required'],
+      validate: {
+        validator: function (val) {
+          return val > 0;
+        },
+        message: 'The unit price must greater than 0 ',
+      },
     },
     discount: {
       type: Number,
-      validator: {
-        validate: function (val) {
-          return val < this.price;
+      validate: {
+        validator: function (val) {
+          // this.unitPrice only works on CREATE, not UPDATE
+          // For updates, you'd need a pre-save hook
+          return !val || val < this.unitPrice;
         },
-        message: `The discount price {VALUE} must be less than the price`,
+        message: 'Discount price {VALUE} must be less than the unit price',
       },
     },
-    stock: Number,
+    stock: {
+      type: Number,
+      default: 0,
+      min: [0, 'Stock cannot be negative'],
+    },
     description: {
       type: String,
       trim: true,
@@ -50,7 +66,8 @@ const productsSchema = new Schema(
   {
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+    timestamps: true,
+  },
 );
 
 productsSchema.virtual('reviews', {
