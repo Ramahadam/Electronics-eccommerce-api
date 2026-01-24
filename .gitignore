@@ -25,7 +25,8 @@ scripts/
 
 firebase-service-account.json
 
+
 config.env
 config.env
 
-deleteAllFirebaseUsers
+deleteAllFirebaseUsers.js
