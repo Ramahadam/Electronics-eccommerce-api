@@ -7,21 +7,13 @@ const authController = require('../controllers/authController');
 
 const router = express.Router();
 
-// router
-//   .route('/')
-//   .get(
-//     authController.protect,
-//     authController.restrictTo('admin'),
-//     productController.getAllProducts
-//   )
-
 router
   .route('/')
   .get(productController.getAllProducts)
   .post(
     authController.protect,
     authController.restrictTo('admin'),
-    productController.createProduct
+    productController.createProduct,
   );
 
 router
@@ -30,12 +22,12 @@ router
   .patch(
     authController.protect,
     authController.restrictTo('admin'),
-    productController.updateProduct
+    productController.updateProduct,
   )
   .delete(
     authController.protect,
     authController.restrictTo('admin'),
-    productController.deleteProduct
+    productController.deleteProduct,
   );
 
 // Nested routes for product review
