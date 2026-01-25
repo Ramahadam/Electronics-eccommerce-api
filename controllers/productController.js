@@ -1,6 +1,7 @@
 const Product = require('../models/productModels');
 const { uploadImage } = require('../utils/uploadimages');
 const { filterQuery } = require('../utils/filterQuery');
+const { isValidImageURL } = require('../utils/helper');
 
 exports.getAllProducts = async (req, res) => {
   try {
@@ -46,28 +47,28 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    // TODO: You can use the below to upload photose to cloudinary then you have to insert the URL to db
-    // const imagePath =
-    //   'https://cloudinary-devs.github.io/cld-docs-assets/assets/images/happy_people.jpg';
+    const { images } = req.body;
 
-    // // Upload the image
-    // const publicId = await uploadImage(imagePath);
-    // console.log(publicId);
+    if (!Array.isArray(images) || !images.length) {
+      return res.status(400).json({
+        status: 'error',
+        error: 'Images must not be empty array ',
+      });
+    }
 
-    // Just uploading below images to cloudinary for all products later on will get images from client
-    // As of now whenever we post new product same images will be uploaded and URLS will be store in DB
-    const images = [
-      './public/dell-laptop.webp',
-      './public/dell-laptop2.webp',
-      './public/dell-laptop4.webp',
-    ];
+    const invalidImages = images.filter((url) => !isValidImageURL(url));
 
-    const uploadedImages = await uploadImage(images);
-    console.log(uploadedImages);
+    if (invalidImages.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        error: 'Image URL must be valid URL ',
+        invalidImages,
+      });
+    }
 
-    const newProduct = await Product.insertOne({
+    const newProduct = await Product.create({
       ...req.body,
-      images: uploadedImages,
+      images,
     });
 
     res.status(201).json({
@@ -77,7 +78,7 @@ exports.createProduct = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(404).json({
+    return res.status(400).json({
       status: 'failed',
       message: {
         err,
