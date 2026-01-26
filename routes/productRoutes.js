@@ -6,8 +6,8 @@ const authController = require('../controllers/authController');
 
 const {
   createProductValidation,
-  validate,
   queryValidation,
+  validate,
   updateProductValidation,
 } = require('../middleware/validateProduct');
 
@@ -30,8 +30,8 @@ router
   .patch(
     authController.protect,
     authController.restrictTo('admin'),
-    validate,
     updateProductValidation,
+    validate,
     productController.updateProduct,
   )
   .delete(
