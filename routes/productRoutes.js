@@ -1,5 +1,4 @@
 const express = require('express');
-const Product = require('../models/productModels');
 const productController = require('../controllers/productController');
 const reviewController = require('../controllers/reviewController');
 

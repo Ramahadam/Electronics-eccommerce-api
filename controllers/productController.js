@@ -5,7 +5,7 @@ const { isValidImageURL } = require('../utils/helper');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    // Refactor the query filter and sort to it's own function
+    //TODO Refactor the query filter and sort to it's own function
     let { filter, sort } = filterQuery(req.query);
 
     const products = await Product.find(filter).sort(sort);
@@ -27,7 +27,14 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id).populate({
+      path: 'reviews',
+      select: 'review rating user',
+      populate: {
+        path: 'user',
+        select: 'fullname  -_id',
+      },
+    });
 
     res.status(200).json({
       status: 'success',

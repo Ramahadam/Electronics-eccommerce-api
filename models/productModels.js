@@ -64,7 +64,13 @@ const productsSchema = new Schema(
     specs: { type: Schema.Types.Mixed, default: {} },
   },
   {
-    toJSON: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret) => {
+        delete ret.__v;
+        return ret;
+      },
+    },
     toObject: { virtuals: true },
     timestamps: true,
   },
@@ -76,29 +82,9 @@ productsSchema.virtual('reviews', {
   foreignField: 'product',
 });
 
-// Populate review and user on product find quires
-productsSchema.pre(/^find/, function (next) {
-  this.populate({
-    path: 'reviews',
-    select: 'review rating user',
-    populate: {
-      path: 'user',
-      select: 'name photo -_id',
-    },
-  });
-
-  next();
-});
-
 // Create index for search perofrmance optimization
 // create compound index
 productsSchema.index({ title: 'text', description: 'text' });
-
-productsSchema.pre(/^find/, function (next) {
-  this.select('-__v');
-
-  next();
-});
 
 const Product = mongoose.model('Product', productsSchema);
 
