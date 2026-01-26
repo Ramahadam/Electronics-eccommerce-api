@@ -76,20 +76,6 @@ productsSchema.virtual('reviews', {
   foreignField: 'product',
 });
 
-// Populate review and user on product find quires
-productsSchema.pre(/^find/, function (next) {
-  this.populate({
-    path: 'reviews',
-    select: 'review rating user',
-    populate: {
-      path: 'user',
-      select: 'name photo -_id',
-    },
-  });
-
-  next();
-});
-
 // Create index for search perofrmance optimization
 // create compound index
 productsSchema.index({ title: 'text', description: 'text' });
