@@ -4,14 +4,23 @@ const reviewController = require('../controllers/reviewController');
 
 const authController = require('../controllers/authController');
 
+const {
+  createProductValidation,
+  validate,
+  queryValidation,
+  updateProductValidation,
+} = require('../middleware/validateProduct');
+
 const router = express.Router();
 
 router
   .route('/')
-  .get(productController.getAllProducts)
+  .get(queryValidation, validate, productController.getAllProducts)
   .post(
     authController.protect,
     authController.restrictTo('admin'),
+    createProductValidation,
+    validate,
     productController.createProduct,
   );
 
@@ -21,6 +30,8 @@ router
   .patch(
     authController.protect,
     authController.restrictTo('admin'),
+    validate,
+    updateProductValidation,
     productController.updateProduct,
   )
   .delete(
@@ -29,9 +40,6 @@ router
     productController.deleteProduct,
   );
 
-// Nested routes for product review
-// GET /products/:productId/reviews
-// POST /products/:productId/reviews
 router
   .route('/:productId/reviews')
   .get(reviewController.getAllReviews)
