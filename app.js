@@ -1,10 +1,21 @@
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const app = express();
 
 app.use(express.json());
+
+// Sanitize data to prevent NoSQL injection
+app.use(
+  mongoSanitize({
+    replaceWith: '_', // Replace $ and . with _
+    onSanitize: ({ req, key }) => {
+      console.warn(`Sanitized key: ${key}`);
+    },
+  }),
+);
 
 // Allow your Next.js frontend
 app.use(cors());
