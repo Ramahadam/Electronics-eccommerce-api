@@ -64,7 +64,13 @@ const productsSchema = new Schema(
     specs: { type: Schema.Types.Mixed, default: {} },
   },
   {
-    toJSON: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      transform: (doc, ret) => {
+        delete ret.__v;
+        return ret;
+      },
+    },
     toObject: { virtuals: true },
     timestamps: true,
   },
@@ -79,12 +85,6 @@ productsSchema.virtual('reviews', {
 // Create index for search perofrmance optimization
 // create compound index
 productsSchema.index({ title: 'text', description: 'text' });
-
-productsSchema.pre(/^find/, function (next) {
-  this.select('-__v');
-
-  next();
-});
 
 const Product = mongoose.model('Product', productsSchema);
 
