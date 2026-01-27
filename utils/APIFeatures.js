@@ -39,6 +39,16 @@ class APIFeatures {
 
     return this;
   }
+
+  pagination() {
+    const page = (this.queryString * 1) | 1;
+    const limit = Math.min(this.queryString.limit * 1 || 20, 100);
+    const skip = (page - 1) * limit;
+
+    this.query = this.query.skip(skip).limit(limit);
+
+    return this;
+  }
 }
 
 let queryStr = {
