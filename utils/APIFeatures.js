@@ -3,4 +3,30 @@ class APIFeatures {
     this.query = query;
     this.queryString = queryString;
   }
+
+  filter() {
+    const queryObject = { ...this.queryString };
+    const excludedElements = ['page', 'limit', 'sort', 'feilds'];
+
+    excludedElements.forEach((el) => delete queryObject[el]);
+
+    let queryStr = JSON.stringify(queryObject);
+
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+
+    this.query = this.query.find(JSON.parse(queryStr));
+    return this;
+  }
 }
+
+let queryStr = {
+  category: 'laptop',
+  price: { gte: '1000' },
+  sort: '-price',
+  page: '1',
+  limit: '10',
+};
+
+let query = Product.find();
+
+const apiFeat = new APIFeatures(query, queryStr);
