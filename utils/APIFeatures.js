@@ -17,12 +17,23 @@ class APIFeatures {
     this.query = this.query.find(JSON.parse(queryStr));
     return this;
   }
+
+  sort() {
+    if (this.queryString.sort) {
+      const sortBy = this.queryString.sort.split(',').join(' ');
+      this.query = this.query.sort(sortBy);
+    } else {
+      this.query = this.query.sort('-createdAt');
+    }
+
+    return this;
+  }
 }
 
 let queryStr = {
   category: 'laptop',
   price: { gte: '1000' },
-  sort: '-price',
+  sort: '-unitPrice,avgRatings',
   page: '1',
   limit: '10',
 };
