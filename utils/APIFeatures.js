@@ -51,14 +51,4 @@ class APIFeatures {
   }
 }
 
-let queryStr = {
-  category: 'laptop',
-  price: { gte: '1000' },
-  sort: '-unitPrice,avgRatings',
-  page: '1',
-  limit: '10',
-};
-
-let query = Product.find();
-
-const apiFeat = new APIFeatures(query, queryStr);
+module.exports = APIFeatures;

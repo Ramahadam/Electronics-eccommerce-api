@@ -1,14 +1,17 @@
 const Product = require('../models/productModels');
 const { uploadImage } = require('../utils/uploadimages');
-const { filterQuery } = require('../utils/filterQuery');
 const { isValidImageURL } = require('../utils/helper');
+const APIFeatures = require('../utils/APIFeatures');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    let { filter, sort } = filterQuery(req.query);
-    console.log(req.query);
+    const features = new APIFeatures(Product.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .pagination();
 
-    const products = await Product.find(filter).sort(sort);
+    const products = await features.query;
 
     res.status(200).json({
       status: 'success',
