@@ -6,6 +6,7 @@ const { isValidImageURL } = require('../utils/helper');
 exports.getAllProducts = async (req, res) => {
   try {
     let { filter, sort } = filterQuery(req.query);
+    console.log(req.query);
 
     const products = await Product.find(filter).sort(sort);
 
