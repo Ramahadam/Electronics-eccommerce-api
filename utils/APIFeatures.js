@@ -31,7 +31,7 @@ class APIFeatures {
 
   limitFields() {
     if (this.queryString.fields) {
-      const fields = this.queryString.split(',').join(' ');
+      const fields = this.queryString.fields.split(',').join(' ');
       this.query = this.query.select(fields);
     } else {
       this.query = this.query.select('-__v');
@@ -41,7 +41,7 @@ class APIFeatures {
   }
 
   pagination() {
-    const page = (this.queryString * 1) | 1;
+    const page = (this.queryString.page * 1) | 1;
     const limit = Math.min(this.queryString.limit * 1 || 20, 100);
     const skip = (page - 1) * limit;
 
