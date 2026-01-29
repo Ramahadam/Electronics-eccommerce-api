@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const connectDB = require('../config/db');
 const Product = require('../models/productModels');
 
-const dotenv = require('dotenv');
-
-dotenv.config({ path: `${__dirname}/config.env` });
-
-const connectDB = require('./config/db');
+dotenv.config({ path: `${__dirname}/../config.env` });
 
 const images = [
   'https://res.cloudinary.com/dbzs4nok9/image/upload/v1758397085/gni4nkmfy9n8k2j6zwsj.jpg',
@@ -64,7 +62,7 @@ const brands = {
   printer: ['HP', 'Canon', 'Brother', 'Epson', 'Samsung'],
 };
 
-const products = Array.from({ length: 2 }).map((_, i) => {
+const products = Array.from({ length: 50 }).map((_, i) => {
   const category = categories[i % categories.length];
 
   let titlePool;
@@ -101,9 +99,7 @@ const products = Array.from({ length: 2 }).map((_, i) => {
 
 const seedData = async () => {
   try {
-    // await Product.deleteMany();
-
-    connectDB();
+    await connectDB();
     console.log(products);
     await Product.create(products);
     console.log('✅ 50 diverse products seeded successfully');
