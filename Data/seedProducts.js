@@ -100,6 +100,9 @@ const products = Array.from({ length: 50 }).map((_, i) => {
 const seedData = async () => {
   try {
     await connectDB();
+
+    await Product.deleteMany();
+
     console.log(products);
     await Product.create(products);
     console.log('✅ 50 diverse products seeded successfully');
