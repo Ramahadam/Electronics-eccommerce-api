@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 const Product = require('../models/productModels');
 
-// const DB = process.env.DB.replaceAll('<PASSWORD>', process.env.PASSWORD);
+const dotenv = require('dotenv');
 
-// mongoose
-//   .connect(DB)
-//   .then(() => console.log('DB connected for seeding'))
-//   .catch((err) => console.error(err));
+dotenv.config({ path: `${__dirname}/config.env` });
+
+const connectDB = require('./config/db');
 
 const images = [
   'https://res.cloudinary.com/dbzs4nok9/image/upload/v1758397085/gni4nkmfy9n8k2j6zwsj.jpg',
@@ -103,6 +102,8 @@ const products = Array.from({ length: 2 }).map((_, i) => {
 const seedData = async () => {
   try {
     // await Product.deleteMany();
+
+    connectDB();
     console.log(products);
     await Product.create(products);
     console.log('✅ 50 diverse products seeded successfully');
