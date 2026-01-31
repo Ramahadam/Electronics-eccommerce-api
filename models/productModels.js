@@ -20,7 +20,7 @@ const productsSchema = new Schema(
       type: String,
       required: [true, 'Product category is required'],
       enum: {
-        values: ['laptop', 'desktop', 'cctv', 'printer'],
+        values: ['laptop', 'desktop', 'cctv'],
         message: '{VALUE} is not a valid category',
       },
     },
