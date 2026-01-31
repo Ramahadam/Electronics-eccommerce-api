@@ -5,6 +5,8 @@ const Product = require('../models/productModels');
 
 dotenv.config({ path: `${__dirname}/../config.env` });
 
+await connectDB();
+
 const images = [
   'https://res.cloudinary.com/dbzs4nok9/image/upload/v1758397085/gni4nkmfy9n8k2j6zwsj.jpg',
   'https://res.cloudinary.com/dbzs4nok9/image/upload/v1758397086/inxy7yeav7gckuntpfr3.jpg',
@@ -99,8 +101,6 @@ const products = Array.from({ length: 50 }).map((_, i) => {
 
 const seedData = async () => {
   try {
-    await connectDB();
-
     await Product.deleteMany();
 
     console.log(products);
