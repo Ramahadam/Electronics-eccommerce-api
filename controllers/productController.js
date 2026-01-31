@@ -5,39 +5,24 @@ const APIFeatures = require('../utils/APIFeatures');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    // STEP 1: Build the query with filters (but don't execute yet)
     const features = new APIFeatures(Product.find(), req.query)
       .filter()
       .sort()
       .limitFields()
       .pagination();
 
-    // STEP 2: Get total count of documents matching the filter
-    // WHY? We need this to calculate totalPages for pagination metadata
-    // TRADE-OFF: This adds an extra database query, but it's necessary for complete pagination info
-
-    // Create a separate count query with the same filters
-    const countFeatures = new APIFeatures(Product.find(), req.query).filter();
-    const totalDocuments = await countFeatures.query.countDocuments();
-
-    // STEP 3: Execute the main query to get paginated products
     const products = await features.query;
 
-    // STEP 4: Generate pagination metadata
-    const paginationMetadata = features.getPaginationMetadata(totalDocuments);
-
-    // STEP 5: Send response with products and pagination info
     res.status(200).json({
       status: 'success',
-      results: products.length, // Number of products in current page
-      pagination: paginationMetadata,
+      length: products.length,
       data: {
         products,
       },
     });
   } catch (err) {
-    res.status(500).json({
-      status: 'error',
+    res.status(404).json({
+      status: 'failed',
       message: err.message,
     });
   }
