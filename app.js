@@ -2,6 +2,8 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const mongoSanitize = require('express-mongo-sanitize');
+const AppError = require('./utils/appError');
+const globalErrorHandler = require('./controllers/errorController');
 
 const app = express();
 
@@ -26,7 +28,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('tiny'));
 }
 
-// const userRouter = require('./routes/userRoutes');
+// Routes
 const authRouter = require('./routes/authRoutes');
 const productRouter = require('./routes/productRoutes');
 const wishlistRouter = require('./routes/wishlistRoutes');
@@ -38,5 +40,13 @@ app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);
 app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/cart', cartRoutes);
+
+// Handle undefined routes
+app.all('*', (req, res, next) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
+
+// Global error handling middleware (MUST BE LAST)
+app.use(globalErrorHandler);
 
 module.exports = app;
