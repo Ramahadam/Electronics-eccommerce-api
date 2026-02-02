@@ -2,152 +2,104 @@ const Product = require('../models/productModels');
 const { uploadImage } = require('../utils/uploadimages');
 const { isValidImageURL } = require('../utils/helper');
 const APIFeatures = require('../utils/APIFeatures');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
 
-exports.getAllProducts = async (req, res) => {
-  try {
-    const features = new APIFeatures(Product.find(), req.query)
-      .filter()
-      .sort()
-      .limitFields()
-      .pagination();
+exports.getAllProducts = catchAsync(async (req, res, next) => {
+  const features = new APIFeatures(Product.find(), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .pagination();
 
-    const products = await features.query;
+  const products = await features.query;
 
-    res.status(200).json({
-      status: 'success',
-      length: products.length,
-      data: {
-        products,
-      },
-    });
-  } catch (err) {
-    res.status(404).json({
-      status: 'failed',
-      message: err.message,
-    });
+  res.status(200).json({
+    status: 'success',
+    results: products.length,
+    data: {
+      products,
+    },
+  });
+});
+
+exports.getProduct = catchAsync(async (req, res, next) => {
+  const product = await Product.findById(req.params.id).populate({
+    path: 'reviews',
+    select: 'review rating user',
+    populate: {
+      path: 'user',
+      select: 'fullname -_id',
+    },
+  });
+
+  if (!product) {
+    return next(new AppError('No product found with that ID', 404));
   }
-};
 
-exports.getProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id).populate({
-      path: 'reviews',
-      select: 'review rating user',
-      populate: {
-        path: 'user',
-        select: 'fullname  -_id',
-      },
-    });
+  res.status(200).json({
+    status: 'success',
+    data: {
+      product,
+    },
+  });
+});
 
-    res.status(200).json({
-      status: 'success',
-      data: {
-        product,
-      },
-    });
-  } catch (err) {
-    res.status(404).json({
-      status: 'failed',
-      data: {
-        error: err.message,
-      },
-    });
+exports.createProduct = catchAsync(async (req, res, next) => {
+  const { images } = req.body;
+
+  if (!Array.isArray(images) || !images.length) {
+    return next(new AppError('Images must not be empty array', 400));
   }
-};
 
-exports.createProduct = async (req, res) => {
-  try {
-    const { images } = req.body;
+  const invalidImages = images.filter((url) => !isValidImageURL(url));
 
-    if (!Array.isArray(images) || !images.length) {
-      return res.status(400).json({
-        status: 'error',
-        error: 'Images must not be empty array ',
-      });
-    }
-
-    const invalidImages = images.filter((url) => !isValidImageURL(url));
-
-    if (invalidImages.length > 0) {
-      return res.status(400).json({
-        status: 'error',
-        error: 'Image URL must be valid URL ',
-        invalidImages,
-      });
-    }
-
-    const newProduct = await Product.create({
-      ...req.body,
-      images,
-    });
-
-    res.status(201).json({
-      status: 'success',
-      data: {
-        product: newProduct,
-      },
-    });
-  } catch (err) {
-    return res.status(400).json({
-      status: 'failed',
-      message: {
-        err,
-      },
-    });
+  if (invalidImages.length > 0) {
+    return next(
+      new AppError(`Invalid image URLs: ${invalidImages.join(', ')}`, 400),
+    );
   }
-};
 
-exports.deleteProduct = async (req, res) => {
-  try {
-    await Product.findByIdAndDelete(req.params.id);
+  const newProduct = await Product.create({
+    ...req.body,
+    images,
+  });
 
-    res.status(204).json({
-      status: 'success',
-      data: null,
-    });
-  } catch (err) {
-    console.log(err);
+  res.status(201).json({
+    status: 'success',
+    data: {
+      product: newProduct,
+    },
+  });
+});
+
+exports.deleteProduct = catchAsync(async (req, res, next) => {
+  const product = await Product.findByIdAndDelete(req.params.id);
+
+  if (!product) {
+    return next(new AppError('No product found with that ID', 404));
   }
-};
 
-exports.updateProduct = async (req, res) => {
-  try {
-    // TODO: You can use the below to upload photose to cloudinary then you have to insert the URL to db
-    // const imagePath =
-    //   'https://cloudinary-devs.github.io/cld-docs-assets/assets/images/happy_people.jpg';
+  res.status(204).json({
+    status: 'success',
+    data: null,
+  });
+});
 
-    // // Upload the image
-    // const publicId = await uploadImage(imagePath);
-    // console.log(publicId);
+exports.updateProduct = catchAsync(async (req, res, next) => {
+  const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
 
-    // Just uploading below images to cloudinary for all products later on will get images from client
-    // As of now whenever we post new product same images will be uploaded and URLS will be store in DB
-    // const images = [
-    //   './public/dell-laptop.webp',
-    //   './public/dell-laptop2.webp',
-    //   './public/dell-laptop4.webp',
-    // ];
-
-    // const uploadedImages = await uploadImage(images);
-    // console.log(uploadedImages);
-
-    // const newProduct = await Product.insertOne({
-    //   ...req.body,
-    //   images: uploadedImages,
-    // });
-
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        product,
-      },
-    });
-  } catch (err) {
-    console.log(err);
+  if (!product) {
+    return next(new AppError('No product found with that ID', 404));
   }
-};
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      product,
+    },
+  });
+});
