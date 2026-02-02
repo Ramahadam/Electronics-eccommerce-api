@@ -2,16 +2,18 @@ class APIFeatures {
   constructor(query, queryString) {
     this.query = query;
     this.queryString = queryString;
+    this.totalDocuments = 0; // Will store total count for pagination metadata
   }
 
   filter() {
     const queryObject = { ...this.queryString };
-    const excludedElements = ['page', 'limit', 'sort', 'feilds'];
+    const excludedElements = ['page', 'limit', 'sort', 'fields']; // Fixed typo: 'feilds' -> 'fields'
 
     excludedElements.forEach((el) => delete queryObject[el]);
 
     let queryStr = JSON.stringify(queryObject);
 
+    // Convert query operators (gte, gt, lte, lt) to MongoDB operators ($gte, $gt, $lte, $lt)
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
     this.query = this.query.find(JSON.parse(queryStr));
@@ -20,9 +22,11 @@ class APIFeatures {
 
   sort() {
     if (this.queryString.sort) {
+      // Allow sorting by multiple fields: ?sort=price,-rating
       const sortBy = this.queryString.sort.split(',').join(' ');
       this.query = this.query.sort(sortBy);
     } else {
+      // Default: Sort by newest first
       this.query = this.query.sort('-createdAt');
     }
 
@@ -31,9 +35,11 @@ class APIFeatures {
 
   limitFields() {
     if (this.queryString.fields) {
-      const fields = this.queryString.split(',').join(' ');
+      // Fixed bug: was this.queryString.split, should be this.queryString.fields.split
+      const fields = this.queryString.fields.split(',').join(' ');
       this.query = this.query.select(fields);
     } else {
+      // Exclude MongoDB version field by default
       this.query = this.query.select('-__v');
     }
 
@@ -41,13 +47,43 @@ class APIFeatures {
   }
 
   pagination() {
-    const page = (this.queryString * 1) | 1;
-    const limit = Math.min(this.queryString.limit * 1 || 20, 100);
+    // Parse page and limit from query string with defaults
+    const page = Math.max(1, this.queryString.page * 1 || 1); // Ensure page is at least 1
+
+    // Default: 10, Maximum: 20 (as per requirements)
+    const limit = Math.min(
+      Math.max(1, this.queryString.limit * 1 || 10), // Default 10, minimum 1
+      20, // Maximum 20
+    );
+
     const skip = (page - 1) * limit;
+
+    // Store pagination params for metadata generation
+    this.paginationParams = { page, limit, skip };
 
     this.query = this.query.skip(skip).limit(limit);
 
     return this;
+  }
+
+  /**
+   * Get pagination metadata
+   * This method should be called AFTER executing the query
+   *
+   * @param {number} totalDocuments - Total count of documents matching the filter
+   * @returns {object} Pagination metadata
+   */
+  getPaginationMetadata(totalDocuments) {
+    const { page, limit } = this.paginationParams || { page: 1, limit: 10 };
+
+    return {
+      currentPage: page,
+      limit: limit,
+      totalDocuments: totalDocuments,
+      totalPages: Math.ceil(totalDocuments / limit),
+      hasNextPage: page * limit < totalDocuments,
+      hasPrevPage: page > 1,
+    };
   }
 }
 
