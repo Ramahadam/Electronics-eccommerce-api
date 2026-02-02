@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 
 const admin = require('../lib/firebase/firebase.config');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
 
 const verifyToken = async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -12,76 +14,57 @@ const verifyToken = async (req, res) => {
   return { decoded, token };
 };
 
-exports.protect = async (req, res, next) => {
-  try {
-    const { decoded, token } = await verifyToken(req);
+exports.protect = catchAsync(async (req, res, next) => {
+  const { decoded, token } = await verifyToken(req);
 
-    if (!token || !decoded) {
-      return res
-        .status(401)
-        .json({ message: 'Invalid token or failed to verify token' });
-    }
+  if (!token || !decoded)
+    throw new AppError('Invalid token or failed to verify token', 401);
 
-    req.auth = decoded;
-    req.firebaseUid = decoded.uid;
+  req.auth = decoded;
+  req.firebaseUid = decoded.uid;
 
-    next();
-  } catch (err) {
-    res.status(401).json({ message: 'Invalid or expired token' });
-  }
-};
+  next();
+});
 
-exports.appendUserId = async (req, res, next) => {
+exports.appendUserId = catchAsync(async (req, res, next) => {
   let user = await User.findOne({ firebaseUid: req.firebaseUid });
 
   req.userId = user.id;
   next();
-};
+});
 
-exports.syncUser = async (req, res) => {
-  try {
-    if (!req.firebaseUid) {
-      return res.status(401).json({
-        status: 'failed',
-        message: 'Unauthorized',
-      });
-    }
+exports.syncUser = catchAsync(async (req, res, next) => {
+  if (!req.firebaseUid) AppError('Unauthorized', 401);
 
-    const fullname = req?.body?.fullname || req?.auth?.name || null;
+  const fullname = req?.body?.fullname || req?.auth?.name || null;
 
-    let user = await User.findOne({ firebaseUid: req.firebaseUid });
+  let user = await User.findOne({ firebaseUid: req.firebaseUid });
 
-    // Create user if not exists
-    if (!user) {
-      user = await User.create({
-        firebaseUid: req.auth.uid,
-        email: req.auth.email,
-        fullname, // Google displayName fallback
-      });
+  // Create user if not exists
+  if (!user) {
+    user = await User.create({
+      firebaseUid: req.auth.uid,
+      email: req.auth.email,
+      fullname, // Google displayName fallback
+    });
 
-      return res.status(201).json({
-        status: 'success',
-        user,
-      });
-    }
-
-    // Optional patch: fill missing fullname later
-    if (!user.fullname && fullname) {
-      user.fullname = fullname;
-      await user.save();
-    }
-
-    return res.status(200).json({
+    return res.status(201).json({
       status: 'success',
       user,
     });
-  } catch (err) {
-    return res.status(400).json({
-      status: 'failed',
-      err: err,
-    });
   }
-};
+
+  // Optional patch: fill missing fullname later
+  if (!user.fullname && fullname) {
+    user.fullname = fullname;
+    await user.save();
+  }
+
+  return res.status(200).json({
+    status: 'success',
+    user,
+  });
+});
 
 exports.restrictTo = (restrctedRole) => {
   return (req, res, next) => {
@@ -117,7 +100,7 @@ exports.forgotPassword = async (req, res, next) => {
 
   // Send the created token to the user email
   const resetUrl = `${req.protocol}://${req.get(
-    'host'
+    'host',
   )}/api/v1/resetpassword/${resetToken}`;
 
   const message = `Hello you are recieving this email for password resetHello!You are receiving this email because
@@ -196,7 +179,7 @@ exports.updatePassword = async (req, res, next) => {
 
   const isCorrectPassword = await user.correctPassowrd(
     currentPassword,
-    user.password
+    user.password,
   );
 
   if (!user || !isCorrectPassword) {
