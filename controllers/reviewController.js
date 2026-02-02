@@ -1,49 +1,39 @@
 const Review = require('../models/reviewModels');
+const AppError = require('../utils/appError');
+const catchAsync = require('../utils/catchAsync');
 
 // Get all reviews on specific product
-exports.getAllReviews = async (req, res, next) => {
-  try {
-    const { productId } = req.params;
-    const reviews = await Review.find({ product: productId });
+exports.getAllReviews = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+  const reviews = await Review.find({ product: productId });
 
-    res.status(200).json({
-      status: 'success',
-      length: reviews.length,
-      data: {
-        reviews,
-      },
-    });
-  } catch (err) {
-    console.log(err);
-  }
-};
+  res.status(200).json({
+    status: 'success',
+    length: reviews.length,
+    data: {
+      reviews,
+    },
+  });
+});
 
 // Get a review on specific product
 
-exports.createReview = async (req, res, next) => {
-  try {
-    const product = req.params.productId;
-    console.log(product, req.body);
-    const newReview = await Review.create({ ...req.body, product });
+exports.createReview = catchAsync(async (req, res, next) => {
+  const product = req.params.productId;
+  console.log(product, req.body);
+  const newReview = await Review.create({ ...req.body, product });
 
-    res.status(201).json({
-      status: 'success',
-      data: {
-        newReview,
-      },
-    });
-  } catch (err) {
-    res.status(400).json({
-      status: 'failed',
-      err,
-    });
-  }
-};
+  res.status(201).json({
+    status: 'success',
+    data: {
+      newReview,
+    },
+  });
+});
 
-exports.updateReview = async (req, res, next) => {
-  try {
-    // TODO Crucially, you add a second check to ensure the user making the request owns the review before updating it:
-    /**
+exports.updateReview = catchAsync(async (req, res, next) => {
+  // TODO Crucially, you add a second check to ensure the user making the request owns the review before updating it:
+  /**
  * const reviewId = req.params.id;
 const userIdFromToken = req.user.id; // Added by middleware
 
@@ -59,32 +49,26 @@ if (!updatedReview) {
 }
  */
 
-    const updatedReview = await Review.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+  const updatedReview = await Review.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
-    if (!updatedReview) throw new Error('No review found with this id');
+  if (!updatedReview) throw new AppError('No review found with this id', 404);
 
-    res.status(200).json({
-      status: 'success',
-      data: {
-        review: updatedReview,
-      },
-    });
-  } catch (err) {
-    res.status(400).json({
-      status: 'failed to updated the review',
-      err,
-    });
-  }
-};
+  res.status(200).json({
+    status: 'success',
+    data: {
+      review: updatedReview,
+    },
+  });
+});
 
-exports.deleteReview = async (req, res, next) => {
+exports.deleteReview = catchAsync(async (req, res, next) => {
   // TODO Crucially, you add a second check to ensure the user making the request owns the review before deelteing it:
   /**
  * const reviewId = req.params.id;
@@ -102,20 +86,13 @@ if (!updatedReview) {
 }
  */
 
-  try {
-    const deletedReview = await Review.findByIdAndDelete(req.params.id, {
-      runValidators: true,
-    });
+  const deletedReview = await Review.findByIdAndDelete(req.params.id, {
+    runValidators: true,
+  });
 
-    if (!deletedReview) throw new Error('Could not delte the review');
+  if (!deletedReview) throw new AppError('Could not delte the review', 400);
 
-    res.status(200).json({
-      status: 'success',
-    });
-  } catch (err) {
-    res.status(400).json({
-      status: 'failed to updated the review',
-      err,
-    });
-  }
-};
+  res.status(200).json({
+    status: 'success',
+  });
+});
