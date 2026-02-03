@@ -86,6 +86,57 @@ productsSchema.virtual('reviews', {
 // create compound index
 productsSchema.index({ title: 'text', description: 'text' });
 
+/**
+ * Pre-remove hook: Cleanup references when product is deleted
+ * Removes product from all wishlists and carts
+ */
+productsSchema.pre('remove', async function (next) {
+  const productId = this._id;
+
+  try {
+    // Remove from all wishlists
+    await mongoose
+      .model('Wishlist')
+      .updateMany({ products: productId }, { $pull: { products: productId } });
+
+    // Remove from all carts
+    await mongoose
+      .model('Cart')
+      .updateMany(
+        { 'items.product': productId },
+        { $pull: { items: { product: productId } } },
+      );
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Pre-findOneAndDelete hook: Same cleanup for findByIdAndDelete
+ */
+productsSchema.pre('findOneAndDelete', async function (next) {
+  const productId = this.getQuery()._id;
+
+  try {
+    await mongoose
+      .model('Wishlist')
+      .updateMany({ products: productId }, { $pull: { products: productId } });
+
+    await mongoose
+      .model('Cart')
+      .updateMany(
+        { 'items.product': productId },
+        { $pull: { items: { product: productId } } },
+      );
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 const Product = mongoose.model('Product', productsSchema);
 
 module.exports = Product;
