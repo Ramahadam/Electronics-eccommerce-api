@@ -50,7 +50,7 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
 // REMOVE PRODUCT FROM WISHLIST
 exports.removeFromWishlist = catchAsync(async (req, res, next) => {
   const user = req.user;
-  const { id } = req.params;
+  const { productId } = req.params;
 
   let wishlists = await Wishlist.findOne({ user });
 
@@ -63,8 +63,8 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
 
   // If there is wishilist check if the product exists .
   if (wishlists.products) {
-    if (wishlists?.products?.includes(id)) {
-      wishlists.removeItemFromWishlist(id);
+    if (wishlists?.products?.includes(productId)) {
+      wishlists.removeItemFromWishlist(productId);
 
       await wishlists.save();
     }
