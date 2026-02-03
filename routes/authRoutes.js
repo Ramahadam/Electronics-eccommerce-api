@@ -3,6 +3,8 @@ const express = require('express');
 const router = express.Router();
 
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middleware/auth.middleware');
+
 // const userController = require('../controllers/userController');
 
 // POST / api / auth / sync;
@@ -14,7 +16,7 @@ const authController = require('../controllers/authController');
 
 //TODO CREATE SYNC ROUTE /api/v1/auth/sync
 
-router.use(authController.protect);
+router.use(authMiddleware.protect);
 
 router.route('/sync').post(authController.syncUser);
 

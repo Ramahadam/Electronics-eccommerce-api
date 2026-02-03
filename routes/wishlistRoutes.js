@@ -1,9 +1,11 @@
 const express = require('express');
 const wihslistController = require('../controllers/wishlistController');
-const authController = require('../controllers/authController');
+const authController = require('../middleware/auth.middleware');
 const router = express.Router();
 
 // Get all wishlists items
+
+router.use(authController.protect);
 
 router
   .route('/')

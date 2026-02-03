@@ -1,12 +1,14 @@
 const express = require('express');
 const reviewController = require('../controllers/reviewController');
-const authController = require('../controllers/authController');
+const authMiddleware = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
+router.use(authMiddleware.protect);
+
 router
   .route('/:id')
-  .patch(authController.protect, reviewController.updateReview)
-  .delete(authController.protect, reviewController.deleteReview);
+  .patch(reviewController.updateReview)
+  .delete(reviewController.deleteReview);
 
 module.exports = router;

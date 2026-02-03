@@ -2,13 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('../controllers/cartController');
-const authController = require('../controllers/authController');
-// const { protect } = require('../middleware/authMiddleware'); // ensure user is logged in
+const authMiddleware = require('../middleware/auth.middleware');
 
-// router.use(protect); // all routes need auth
-router.use(authController.protect);
+router.use(authMiddleware.protect);
 
-router.use(authController.appendUserId);
+router.use(authMiddleware.appendUserId);
 
 router.get('/', cartController.getCart);
 router.post('/', cartController.addToCart);
