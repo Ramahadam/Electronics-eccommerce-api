@@ -1,23 +1,35 @@
 const Wishlist = require('../models/wishlistModels');
+const Product = require('../models/productModels');
 const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
 
-// GET ALL ITEMS FROM WISHLIST
 exports.getWishlist = catchAsync(async (req, res, next) => {
-  const userId = req.user;
-  console.log(userId);
-  const wishlists = await Wishlist.findOne({ user: userId });
+  const wishlist = await Wishlist.findOne({ user: req.userId }).populate({
+    path: 'products',
+    select: 'title images unitPrice discount stock brand category avgRatings',
+  });
 
-  if (!wishlists) {
-    return res.status(404).json({
-      status: 'failed',
-      message: 'wishilist is empty',
+  // ✅ Return empty array if no wishlist, not 404
+  if (!wishlist || !wishlist.products.length) {
+    return res.status(200).json({
+      status: 'success',
+      results: 0,
+      data: {
+        products: [],
+      },
     });
   }
 
   res.status(200).json({
     status: 'success',
+    results: wishlist.products.length,
     data: {
-      wishlists,
+      products: wishlist.products,
+      wishlist: {
+        id: wishlist._id,
+        createdAt: wishlist.createdAt,
+        updatedAt: wishlist.updatedAt,
+      },
     },
   });
 });
