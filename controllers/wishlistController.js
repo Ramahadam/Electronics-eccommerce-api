@@ -112,3 +112,58 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * POST /api/v1/wishlist/toggle/:productId
+ * Toggle product in wishlist (add if not exists, remove if exists)
+ */
+exports.toggleWishlist = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+
+  // ✅ Validate product exists
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new AppError('Product not found', 404);
+  }
+
+  let wishlist = await Wishlist.findOne({ user: req.userId });
+  let action;
+
+  if (!wishlist) {
+    // Create new wishlist with product
+    wishlist = await Wishlist.create({
+      user: req.userId,
+      products: [productId],
+    });
+    action = 'added';
+  } else {
+    const index = wishlist.products.indexOf(productId);
+
+    if (index > -1) {
+      // Remove if exists
+      wishlist.products.splice(index, 1);
+      action = 'removed';
+    } else {
+      // Add if doesn't exist
+      wishlist.products.push(productId);
+      action = 'added';
+    }
+
+    await wishlist.save();
+  }
+
+  // Populate before sending response
+  await wishlist.populate({
+    path: 'products',
+    select: 'title images unitPrice discount stock brand category avgRatings',
+  });
+
+  res.status(200).json({
+    status: 'success',
+    action,
+    message: `Product ${action} ${action === 'added' ? 'to' : 'from'} wishlist`,
+    data: {
+      wishlist,
+    },
+  });
+});
