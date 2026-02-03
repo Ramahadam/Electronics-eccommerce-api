@@ -80,42 +80,35 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
   });
 });
 
-// REMOVE PRODUCT FROM WISHLIST
+/**
+ * DELETE /api/v1/wishlist/items/:productId
+ * Remove product from wishlist
+ */
 exports.removeFromWishlist = catchAsync(async (req, res, next) => {
-  const user = req.user;
   const { productId } = req.params;
 
-  let wishlists = await Wishlist.findOne({ user });
+  const wishlist = await Wishlist.findOne({ user: req.userId });
 
-  if (!wishlists) {
-    return res.status(404).json({
-      status: 'Failed ',
-      message: 'No wishilist found',
-    });
+  if (!wishlist) {
+    throw new AppError('Wishlist not found', 404);
   }
 
-  // If there is wishilist check if the product exists .
-  if (wishlists.products) {
-    if (wishlists?.products?.includes(productId)) {
-      wishlists.removeItemFromWishlist(productId);
-
-      await wishlists.save();
-    }
-
-    if (!wishlists.products.length) {
-      await Wishlist.findByIdAndDelete({ _id: wishlists._id });
-      return res.status(200).json({
-        status: 'success',
-        message: 'wishilist is empty',
-      });
-    }
+  if (!wishlist.products.includes(productId)) {
+    throw new AppError('Product not found in wishlist', 404);
   }
 
-  // If the product exists in the wishlish remove the product.
-  // If the product doesn't exist do nothing.
+  // Remove product
+  wishlist.products = wishlist.products.filter(
+    (id) => id.toString() !== productId,
+  );
+
+  await wishlist.save();
 
   res.status(200).json({
     status: 'success',
-    data: wishlists,
+    message: 'Product removed from wishlist',
+    data: {
+      wishlist,
+    },
   });
 });
