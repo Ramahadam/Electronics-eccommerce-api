@@ -187,3 +187,27 @@ exports.checkInWishlist = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * DELETE /api/v1/wishlist/clear
+ * Clear entire wishlist
+ */
+exports.clearWishlist = catchAsync(async (req, res, next) => {
+  const wishlist = await Wishlist.findOneAndUpdate(
+    { user: req.userId },
+    { $set: { products: [] } },
+    { new: true },
+  );
+
+  if (!wishlist) {
+    throw new AppError('Wishlist not found', 404);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Wishlist cleared',
+    data: {
+      wishlist,
+    },
+  });
+});
