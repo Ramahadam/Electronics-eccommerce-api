@@ -167,3 +167,23 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * GET /api/v1/wishlist/check/:productId
+ * Check if product is in user's wishlist
+ */
+exports.checkInWishlist = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+
+  const wishlist = await Wishlist.findOne({
+    user: req.userId,
+    products: productId,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      inWishlist: !!wishlist,
+    },
+  });
+});
