@@ -34,25 +34,46 @@ exports.getWishlist = catchAsync(async (req, res, next) => {
   });
 });
 
-// ADD PRODUCT FROM WISHLIST
+/**
+ * POST /api/v1/wishlist/items/:productId
+ * Add product to wishlist
+ */
 exports.addToWishlist = catchAsync(async (req, res, next) => {
-  const user = req.user;
+  const { productId } = req.params;
 
-  const { productId } = req.body;
+  // ✅ Validate product exists
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new AppError('Product not found', 404);
+  }
 
-  let wishlist = await Wishlist.findOne({ user });
+  let wishlist = await Wishlist.findOne({ user: req.userId });
 
+  // Create wishlist if doesn't exist
   if (!wishlist) {
-    wishlist = await Wishlist.create({ user });
-  }
+    wishlist = await Wishlist.create({
+      user: req.userId,
+      products: [productId],
+    });
+  } else {
+    // ✅ Check if already in wishlist
+    if (wishlist.products.includes(productId)) {
+      throw new AppError('Product already in wishlist', 400);
+    }
 
-  if (!wishlist.products.includes(productId)) {
     wishlist.products.push(productId);
+    await wishlist.save();
   }
 
-  await wishlist.save();
+  // Populate before sending response
+  await wishlist.populate({
+    path: 'products',
+    select: 'title images unitPrice discount stock brand category avgRatings',
+  });
+
   res.status(201).json({
     status: 'success',
+    message: 'Product added to wishlist',
     data: {
       wishlist,
     },
