@@ -3,35 +3,9 @@ const User = require('../models/userModels');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 
-const admin = require('../lib/firebase/firebase.config');
+// const admin = require('../lib/firebase/firebase.config');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-
-const verifyToken = async (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  const decoded = await admin.auth().verifyIdToken(token);
-
-  return { decoded, token };
-};
-
-exports.protect = catchAsync(async (req, res, next) => {
-  const { decoded, token } = await verifyToken(req);
-
-  if (!token || !decoded)
-    throw new AppError('Invalid token or failed to verify token', 401);
-
-  req.auth = decoded;
-  req.firebaseUid = decoded.uid;
-
-  next();
-});
-
-exports.appendUserId = catchAsync(async (req, res, next) => {
-  let user = await User.findOne({ firebaseUid: req.firebaseUid });
-
-  req.userId = user.id;
-  next();
-});
 
 exports.syncUser = catchAsync(async (req, res, next) => {
   if (!req.firebaseUid) AppError('Unauthorized', 401);

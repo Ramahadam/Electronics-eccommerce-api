@@ -2,7 +2,7 @@
 
 // const router = express.Router();
 
-// const authController = require('../controllers/authController');
+// const authController = require('../middleware/auth.middleware');
 // const userController = require('../controllers/userController');
 
 // // Singup route

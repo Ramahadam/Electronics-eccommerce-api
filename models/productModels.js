@@ -86,6 +86,78 @@ productsSchema.virtual('reviews', {
 // create compound index
 productsSchema.index({ title: 'text', description: 'text' });
 
+/**
+ * Pre-remove hook: Cleanup references when product is deleted
+ * Removes product from all wishlists and carts
+ */
+productsSchema.pre('remove', async function (next) {
+  const productId = this._id;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Remove from all wishlists
+    await mongoose
+      .model('Wishlist')
+      .updateMany({ products: productId }, { $pull: { products: productId } })
+      .session(session);
+
+    // Remove from all carts
+    await mongoose
+      .model('Cart')
+      .updateMany(
+        { 'items.product': productId },
+        { $pull: { items: { product: productId } } },
+      )
+      .session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    next();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    next(error);
+  }
+});
+
+/**
+ * Pre-findOneAndDelete hook: Same cleanup for findByIdAndDelete
+ */
+productsSchema.pre('findOneAndDelete', async function (next) {
+  const productId = this.getQuery()._id;
+
+  const session = await mongoose.startSession();
+
+  session.startTransaction();
+
+  try {
+    await mongoose
+      .model('Wishlist')
+      .updateMany({ products: productId }, { $pull: { products: productId } })
+      .session(session);
+
+    await mongoose
+      .model('Cart')
+      .updateMany(
+        { 'items.product': productId },
+        { $pull: { items: { product: productId } } },
+      )
+      .session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+    next();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    next(error);
+  }
+});
+
 const Product = mongoose.model('Product', productsSchema);
 
 module.exports = Product;

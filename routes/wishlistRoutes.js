@@ -1,16 +1,25 @@
 const express = require('express');
-const wihslistController = require('../controllers/wishlistController');
-const authController = require('../controllers/authController');
 const router = express.Router();
+const wishlistController = require('../controllers/wishlistController');
 
-// Get all wishlists items
+// Import from middleware (new pattern)
+const { protect, appendUserId } = require('../middleware/auth.middleware');
+
+// ✅ Apply authentication to all routes
+router.use(protect);
+router.use(appendUserId);
+
+// Core operations
+router.route('/').get(wishlistController.getWishlist);
 
 router
-  .route('/')
-  .get(wihslistController.getWishlist)
-  .post(wihslistController.addToWishlist);
+  .route('/items/:productId')
+  .post(wishlistController.addToWishlist)
+  .delete(wishlistController.removeFromWishlist);
 
-// Remove product from wishlist
-router.route('/:productId').delete(wihslistController.removeFromWishlist);
+// Advanced features
+router.post('/toggle/:productId', wishlistController.toggleWishlist);
+router.get('/check/:productId', wishlistController.checkInWishlist);
+router.delete('/clear', wishlistController.clearWishlist);
 
 module.exports = router;

@@ -2,7 +2,7 @@ const express = require('express');
 const productController = require('../controllers/productController');
 const reviewController = require('../controllers/reviewController');
 
-const authController = require('../controllers/authController');
+const authMiddleware = require('../middleware/auth.middleware');
 
 const {
   createProductValidation,
@@ -17,8 +17,8 @@ router
   .route('/')
   .get(queryValidation, validate, productController.getAllProducts)
   .post(
-    authController.protect,
-    authController.restrictTo('admin'),
+    authMiddleware.protect,
+    authMiddleware.restrictTo('admin'),
     createProductValidation,
     validate,
     productController.createProduct,
@@ -28,21 +28,21 @@ router
   .route('/:id')
   .get(productController.getProduct)
   .patch(
-    authController.protect,
-    authController.restrictTo('admin'),
+    authMiddleware.protect,
+    authMiddleware.restrictTo('admin'),
     updateProductValidation,
     validate,
     productController.updateProduct,
   )
   .delete(
-    authController.protect,
-    authController.restrictTo('admin'),
+    authMiddleware.protect,
+    authMiddleware.restrictTo('admin'),
     productController.deleteProduct,
   );
 
 router
   .route('/:productId/reviews')
   .get(reviewController.getAllReviews)
-  .post(authController.protect, reviewController.createReview);
+  .post(authMiddleware.protect, reviewController.createReview);
 
 module.exports = router;
