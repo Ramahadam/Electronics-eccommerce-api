@@ -137,7 +137,9 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
     });
     action = 'added';
   } else {
-    const index = wishlist.products.indexOf(productId);
+    const index = wishlist.products.indexOf(
+      (id) => id.toString() === productId,
+    );
 
     if (index > -1) {
       // Remove if exists
