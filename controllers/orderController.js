@@ -2,51 +2,59 @@ const catchAsync = require('../utils/catchAsync');
 const Cart = require('../models/cartModels');
 const Order = require('../models/orderModels');
 const AppError = require('../utils/appError');
+const mongoose = require('mongoose');
 
 exports.createOrder = catchAsync(async (req, res, next) => {
-  const userId = req.userId;
+  const session = await mongoose.startSession();
 
-  // Find the cartBy user ID
-  const cart = await Cart.find({ user: userId }).populate('items.product');
+  // withTransaction handles startTransaction, commit, and abort automatically
+  await session.withTransaction(async () => {
+    const userId = req.userId;
 
-  // If there is no cart return 404 empty
-  if (!cart || !userId) return next(AppError('Empty cart', 404));
+    // 1. Fetch Cart (Must pass { session } to every query)
+    const carts = await Cart.find({ user: userId })
+      .populate('items.product')
+      .session(session);
 
-  // normalize cart items
-  const cartItems = cart[0].items.map((cur) => ({
-    product: cur.product.id,
-    name: cur.product.title,
-    price: cur.product.unitPrice,
-    quantity: cur.quantity,
-  }));
+    // Entire cart is array of single object
+    const cart = carts[0];
 
-  // create the order
+    if (!cart || !cart.items.length) {
+      throw new AppError('Empty cart or user not found', 404);
+    }
 
-  const newOrder = await Order.create({
-    user: userId,
-    items: cartItems,
-    totalAmount: cart[0].totalPrice,
+    // 2. Map Items
+    const cartItems = cart.items.map((cur) => ({
+      product: cur.product.id,
+      name: cur.product.title,
+      price: cur.product.unitPrice,
+      quantity: cur.quantity,
+    }));
+
+    // 3. Create Order (Pass session)
+    const newOrder = await Order.create(
+      [
+        {
+          user: userId,
+          items: cartItems,
+          totalAmount: cart.totalPrice,
+        },
+      ],
+      { session },
+    );
+
+    // 4. Clear Cart (Pass session)
+    const updatedCart = await Cart.findOneAndUpdate(
+      { user: userId },
+      { $set: { items: [], totalPrice: 0 } },
+      { new: true, session }, // with { session }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: { order: newOrder[0], cart: updatedCart },
+    });
   });
 
-  // Clear the cart
-  await Cart.findOneAndUpdate(
-    { user: req.userId },
-    {
-      $set: {
-        items: [],
-        totalPrice: 0,
-      },
-    },
-    { new: true },
-  );
-
-  console.log('cart', cart);
-  console.log('order', newOrder);
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      order: newOrder,
-    },
-  });
+  session.endSession(); // Always end the session
 });
