@@ -20,13 +20,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     quantity: cur.quantity,
   }));
 
-  // prepare the order
-  //   const order = {
-  //     user: userId,
-  //     items: cartItems,
-  //     totalAmount: cart[0].totalPrice,
-  //   };
-
   // create the order
 
   const newOrder = await Order.create({
@@ -35,7 +28,20 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     totalAmount: cart[0].totalPrice,
   });
 
-  console.log(newOrder);
+  // Clear the cart
+  await Cart.findOneAndUpdate(
+    { user: req.userId },
+    {
+      $set: {
+        items: [],
+        totalPrice: 0,
+      },
+    },
+    { new: true },
+  );
+
+  console.log('cart', cart);
+  console.log('order', newOrder);
 
   res.status(200).json({
     status: 'success',
