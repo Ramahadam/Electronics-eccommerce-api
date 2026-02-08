@@ -34,12 +34,14 @@ const productRouter = require('./routes/productRoutes');
 const wishlistRouter = require('./routes/wishlistRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);
 app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/order', orderRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {
