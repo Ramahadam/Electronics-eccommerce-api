@@ -94,6 +94,7 @@ describe('Order API Tests', () => {
 
       // Verify order was created
       const createdOrder = await Order.findOne({ user: user._id });
+
       expect(createdOrder).toBeDefined();
       expect(createdOrder.totalAmount).toBe(999);
       expect(createdOrder.items).toHaveLength(1);
@@ -116,6 +117,98 @@ describe('Order API Tests', () => {
       // Verify no order was created
       const orders = await Order.find({ user: user._id });
       expect(orders).toHaveLength(0);
+    });
+
+    it('should handle multiple items in cart', async () => {
+      // Create additional products
+      const product2 = await Product.create({
+        title: 'Desktop all in one',
+        unitPrice: 299,
+        brand: 'hp',
+        category: 'desktop',
+        description: 'All in one desktop',
+        stock: 50,
+      });
+
+      const product3 = await Product.create({
+        title: 'CCTV camera HD',
+        unitPrice: 1499,
+        brand: 'max',
+        category: 'cctv',
+        description: 'CCTV camera HD',
+        stock: 25,
+      });
+
+      // Update cart with multiple items
+      const totalPrice = 999 * 2 + 299 * 1 + 1499 * 3; // 6794
+      await Cart.findOneAndUpdate(
+        { user: user._id },
+        {
+          items: [
+            {
+              product: product._id,
+              quantity: 2,
+              unitPrice: 999,
+            },
+            {
+              product: product2._id,
+              quantity: 1,
+              unitPrice: 299,
+            },
+            {
+              product: product3._id,
+              quantity: 3,
+              unitPrice: 1499,
+            },
+          ],
+          totalPrice: totalPrice,
+        },
+      );
+
+      const response = await request(app)
+        .post('/api/v1/order')
+        .set('Authorization', `Bearer ${token}`)
+        .send();
+
+      expect(response.status).toBe(201);
+      expect(response.body.status).toBe('success');
+
+      const order = response.body.data.order;
+
+      // Verify order has all 3 items
+      expect(order.items).toHaveLength(3);
+      expect(order.totalAmount).toBe(totalPrice);
+
+      // Verify each item in the order
+      const desktop = order.items.find(
+        (item) => item.name === 'Desktop all in one',
+      );
+
+      expect(desktop).toBeDefined();
+      expect(desktop.quantity).toBe(1);
+      expect(desktop.price).toBe(299);
+
+      const cctv = order.items.find((item) => item.name === 'CCTV camera HD');
+
+      expect(cctv).toBeDefined();
+      expect(cctv.quantity).toBe(3);
+      expect(cctv.price).toBe(1499);
+
+      const laptop = order.items.find((item) => item.name === 'Test Product');
+
+      expect(laptop).toBeDefined();
+      expect(laptop.quantity).toBe(2);
+      expect(laptop.price).toBe(999);
+
+      // Verify cart is cleared
+      const updatedCart = await Cart.findOne({ user: user._id });
+      expect(updatedCart.items).toHaveLength(0);
+      expect(updatedCart.totalPrice).toBe(0);
+
+      // Verify order is saved in database
+      const dbOrder = await Order.findOne({ user: user._id });
+      expect(dbOrder.items).toHaveLength(3);
+      expect(dbOrder.totalAmount).toBe(totalPrice);
     });
   });
 });
