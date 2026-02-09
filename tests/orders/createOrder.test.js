@@ -11,7 +11,6 @@ jest.mock('../../middleware/auth.middleware', () => {
   return {
     ...originalModule,
     protect: jest.fn((req, res, next) => {
-      console.log('🔐 Mock: protect middleware called');
       req.firebaseUid = 'test-firebase-uid';
       next();
     }),
@@ -35,30 +34,24 @@ describe('Order API Tests', () => {
   const token = 'mock-token';
 
   beforeEach(async () => {
-    console.log('\n🧪 Test: Starting beforeEach...');
     jest.clearAllMocks();
 
-    console.log('👤 Creating user...');
     user = await User.create({
       email: 'test@test.com',
       fullname: 'Test User',
       firebaseUid: 'test-firebase-uid',
     });
-    console.log('✅ User created:', user._id);
 
-    console.log('📦 Creating product...');
     product = await Product.create({
       title: 'Test Product',
       unitPrice: 999,
       brand: 'Test Brand',
-      category: 'laptop', // Make sure this matches your schema enum
+      category: 'laptop',
       description: 'Test product description',
       stock: 10,
     });
-    console.log('✅ Product created:', product._id);
 
-    console.log('🛒 Creating cart...');
-    const cart = await Cart.create({
+    await Cart.create({
       user: user._id,
       items: [
         {
@@ -69,75 +62,60 @@ describe('Order API Tests', () => {
       ],
       totalPrice: 999,
     });
-    console.log('✅ Cart created:', cart._id);
 
-    console.log('🔧 Setting up auth mock...');
     const authMiddleware = require('../../middleware/auth.middleware');
     authMiddleware.appendUserId.mockImplementation((req, res, next) => {
-      console.log('🔐 Mock: appendUserId middleware called');
       req.userId = user._id;
       req.user = user;
       next();
     });
-    console.log('✅ beforeEach complete\n');
   });
 
   afterAll(async () => {
-    console.log('🔧 Test: Closing connection...');
     await mongoose.connection.close();
-    console.log('✅ Test: Connection closed');
   });
 
   describe('POST /api/v1/order', () => {
     it('should successfully create an order and clear the cart', async () => {
-      console.log('🚀 Test 1: Starting test...');
-
-      console.log('📤 Making POST request to /api/v1/order...');
       const response = await request(app)
         .post('/api/v1/order')
         .set('Authorization', `Bearer ${token}`)
         .send();
 
-      console.log('📥 Response received');
-      console.log('Status:', response.status);
-      console.log('Body:', JSON.stringify(response.body, null, 2));
-
       expect(response.status).toBe(201);
       expect(response.body.status).toBe('success');
       expect(response.body.data.order).toBeDefined();
+      expect(response.body.data.order.totalAmount).toBe(999);
 
+      // Verify cart is cleared
       const updatedCart = await Cart.findOne({ user: user._id });
       expect(updatedCart.items).toHaveLength(0);
+      expect(updatedCart.totalPrice).toBe(0);
 
+      // Verify order was created
       const createdOrder = await Order.findOne({ user: user._id });
       expect(createdOrder).toBeDefined();
       expect(createdOrder.totalAmount).toBe(999);
-
-      console.log('✅ Test 1: Complete\n');
+      expect(createdOrder.items).toHaveLength(1);
     });
 
     it('should fail with 404 when cart is empty', async () => {
-      console.log('🚀 Test 2: Starting test...');
-
       await Cart.findOneAndUpdate(
         { user: user._id },
         { items: [], totalPrice: 0 },
       );
 
-      console.log('📤 Making POST request with empty cart...');
       const response = await request(app)
         .post('/api/v1/order')
         .set('Authorization', `Bearer ${token}`)
         .send();
 
-      console.log('📥 Response received');
-      console.log('Status:', response.status);
-      console.log('Body:', JSON.stringify(response.body, null, 2));
-
       expect(response.status).toBe(404);
       expect(response.body.message).toMatch(/empty/i);
 
-      console.log('✅ Test 2: Complete\n');
+      // Verify no order was created
+      const orders = await Order.find({ user: user._id });
+      expect(orders).toHaveLength(0);
     });
   });
 });

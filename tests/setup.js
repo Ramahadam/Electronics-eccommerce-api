@@ -8,7 +8,6 @@ beforeAll(async () => {
   jest.setTimeout(120000);
   process.env.NODE_ENV = 'development';
 
-  console.log('🔧 Creating replica set...');
   mongod = await MongoMemoryReplSet.create({
     replSet: {
       count: 1,
@@ -17,11 +16,8 @@ beforeAll(async () => {
   });
 
   const uri = mongod.getUri();
-  console.log('🔧 URI:', uri);
 
   await mongoose.connect(uri);
-
-  console.log('✅ Connected to MongoDB replica set');
 }, 120000);
 
 afterEach(async () => {
