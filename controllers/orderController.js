@@ -158,7 +158,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       );
     });
 
-    res.status(200).json({
+    res.status(201).json({
       status: 'success',
       data: { order },
     });
