@@ -210,5 +210,115 @@ describe('Order API Tests', () => {
       expect(dbOrder.items).toHaveLength(3);
       expect(dbOrder.totalAmount).toBe(totalPrice);
     });
+
+    it('should apply correct pricing from cart, not current product price', async () => {
+      // Scenario: User adds product to cart at price 999
+      // Product price changes to 1299
+      // Order should use the cart's saved price (999), not the new price (1299)
+
+      // Initial setup: Cart has product at 999 (already done in beforeEach)
+      const cartBeforeOrder = await Cart.findOne({ user: user._id });
+      expect(cartBeforeOrder.items[0].unitPrice).toBe(999);
+      expect(cartBeforeOrder.totalPrice).toBe(999);
+
+      // Simulate price change: Update product price to 1299
+      await Product.findByIdAndUpdate(product._id, { unitPrice: 1299 });
+
+      // Verify product price changed in database
+      const updatedProduct = await Product.findById(product._id);
+      expect(updatedProduct.unitPrice).toBe(1299);
+
+      // Create order - should use cart's saved price (999), not new price (1299)
+      const response = await request(app)
+        .post('/api/v1/order')
+        .set('Authorization', `Bearer ${token}`)
+        .send();
+
+      expect(response.status).toBe(201);
+      expect(response.body.status).toBe('success');
+
+      const order = response.body.data.order;
+
+      // CRITICAL: Verify order uses cart's saved price (999), not current product price (1299)
+      expect(order.items[0].price).toBe(999); // Cart's saved price
+      expect(order.items[0].price).not.toBe(1299); // NOT the current product price
+      expect(order.totalAmount).toBe(999);
+
+      // Verify in database
+      const dbOrder = await Order.findOne({ user: user._id });
+      expect(dbOrder.items[0].price).toBe(999);
+      expect(dbOrder.totalAmount).toBe(999);
+
+      // Double-check: Product price is still 1299 in database
+      const productAfterOrder = await Product.findById(product._id);
+      expect(productAfterOrder.unitPrice).toBe(1299);
+    });
+
+    it('should apply correct pricing with multiple items and varying prices', async () => {
+      // Create products
+      const product2 = await Product.create({
+        title: 'Laptop macbook',
+        unitPrice: 199,
+        brand: 'macbook',
+        category: 'laptop',
+        description: 'Macbook M4',
+        stock: 100,
+      });
+
+      // Add to cart with specific prices
+      const cartPrice1 = 899; // Discounted from 999
+      const cartPrice2 = 149; // Discounted from 199
+      const totalPrice = cartPrice1 * 3 + cartPrice2 * 5; // 3442
+
+      await Cart.findOneAndUpdate(
+        { user: user._id },
+        {
+          items: [
+            {
+              product: product._id,
+              quantity: 3,
+              unitPrice: cartPrice1, // Saved at discounted price
+            },
+            {
+              product: product2._id,
+              quantity: 5,
+              unitPrice: cartPrice2, // Saved at discounted price
+            },
+          ],
+          totalPrice: totalPrice,
+        },
+      );
+
+      // Change product prices to higher values
+      await Product.findByIdAndUpdate(product._id, { unitPrice: 1099 });
+      await Product.findByIdAndUpdate(product2._id, { unitPrice: 249 });
+
+      // Create order
+      const response = await request(app)
+        .post('/api/v1/order')
+        .set('Authorization', `Bearer ${token}`)
+        .send();
+
+      expect(response.status).toBe(201);
+
+      const order = response.body.data.order;
+
+      // Verify cart's saved prices are used, not current product prices
+      const item1 = order.items.find((item) => item.name === 'Test Product');
+      expect(item1.price).toBe(cartPrice1); // 899, not 1099
+      expect(item1.quantity).toBe(3);
+
+      const item2 = order.items.find((item) => item.name === 'Laptop macbook');
+      expect(item2.price).toBe(cartPrice2); // 149, not 249
+      expect(item2.quantity).toBe(5);
+
+      // Verify total uses cart prices
+      expect(order.totalAmount).toBe(totalPrice); // 3442
+
+      // Calculate what it would be with current prices
+      const currentPriceTotal = 1099 * 3 + 249 * 5; // 4542
+      expect(order.totalAmount).not.toBe(currentPriceTotal);
+      expect(order.totalAmount).toBeLessThan(currentPriceTotal);
+    });
   });
 });
