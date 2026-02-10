@@ -34,6 +34,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             items: cartItems,
             totalAmount: cart.totalPrice,
             status: 'pending',
+            paymentStatus: 'unpaid',
+            payment: {
+              provider: 'strip',
+              intentId: 'strip intent id',
+              data: new Date.now(),
+            },
           },
         ],
         { session },

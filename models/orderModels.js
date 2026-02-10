@@ -55,6 +55,11 @@ const orderSchema = new mongoose.Schema(
       default: 'unpaid',
       index: true,
     },
+    payment: {
+      provider: String,
+      intentId: String,
+      paidAt: Date,
+    },
   },
   { timestamps: true },
 );
