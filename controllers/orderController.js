@@ -36,9 +36,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             status: 'pending',
             paymentStatus: 'unpaid',
             payment: {
-              provider: 'strip',
-              intentId: 'strip intent id',
-              data: new Date.now(),
+              provider: 'stripe',
             },
           },
         ],
