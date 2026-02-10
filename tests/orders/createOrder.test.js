@@ -1,3 +1,22 @@
+jest.mock('stripe', () => {
+  return jest.fn().mockImplementation(() => ({
+    checkout: {
+      sessions: {
+        create: jest.fn().mockResolvedValue({
+          id: 'test_session_id',
+          url: 'https://test.stripe.com/pay/test',
+        }),
+      },
+    },
+    webhooks: {
+      constructEvent: jest.fn().mockReturnValue({
+        type: 'checkout.session.completed',
+        data: { object: { id: 'test_session_id' } },
+      }),
+    },
+  }));
+});
+
 const request = require('supertest');
 const app = require('../../app');
 const User = require('../../models/userModels');
@@ -5,6 +24,7 @@ const Product = require('../../models/productModels');
 const Cart = require('../../models/cartModels');
 const Order = require('../../models/orderModels');
 const mongoose = require('mongoose');
+// Stripe is now mocked above
 
 jest.mock('../../middleware/auth.middleware', () => {
   const originalModule = jest.requireActual('../../middleware/auth.middleware');
@@ -49,6 +69,7 @@ describe('Order API Tests', () => {
       category: 'laptop',
       description: 'Test product description',
       stock: 10,
+      images: ['https://example.com/test-product.jpg'],
     });
 
     await Cart.create({
@@ -128,6 +149,7 @@ describe('Order API Tests', () => {
         category: 'desktop',
         description: 'All in one desktop',
         stock: 50,
+        images: ['https://example.com/desktop.jpg'],
       });
 
       const product3 = await Product.create({
@@ -137,6 +159,7 @@ describe('Order API Tests', () => {
         category: 'cctv',
         description: 'CCTV camera HD',
         stock: 25,
+        images: ['https://example.com/cctv.jpg'],
       });
 
       // Update cart with multiple items
@@ -263,6 +286,7 @@ describe('Order API Tests', () => {
         category: 'laptop',
         description: 'Macbook M4',
         stock: 100,
+        images: ['https://example.com/macbook.jpg'],
       });
 
       // Add to cart with specific prices
