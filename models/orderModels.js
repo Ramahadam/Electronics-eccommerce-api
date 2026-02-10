@@ -49,6 +49,12 @@ const orderSchema = new mongoose.Schema(
       default: 'pending',
       index: true,
     },
+    paymentStatus: {
+      type: String,
+      enum: ['unpaid', 'paid', 'failed', 'refunded'],
+      default: 'unpaid',
+      index: true,
+    },
   },
   { timestamps: true },
 );
