@@ -3,6 +3,7 @@ const Cart = require('../models/cartModels');
 const Order = require('../models/orderModels');
 const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 exports.createOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -58,3 +59,85 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     await session.endSession();
   }
 });
+
+exports.createCheckoutSession = catchAsync(async (req, res, next) => {
+  const order = await Order.findById(req.params.orderId);
+
+  if (!order) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  if (order.paymentStatus === 'paid') {
+    return next(new AppError('Order already paid', 400));
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    mode: 'payment',
+    line_items: order.items.map((item) => ({
+      price_data: {
+        currency: 'aed',
+        product_data: {
+          name: item.name,
+        },
+        unit_amount: item.price * 100, // AED → fils
+      },
+      quantity: item.quantity,
+    })),
+    success_url: `${process.env.FRONTEND_URL}/checkout/success?order=${order._id}`,
+    cancel_url: `${process.env.FRONTEND_URL}/checkout/cancel`,
+    metadata: {
+      orderId: order._id.toString(),
+      userId: order.user.toString(),
+    },
+  });
+
+  console.log('===========Session created ========>>>>>');
+  console.log('session========>>>>>', session);
+
+  // Save intent/session id
+  order.payment = {
+    provider: 'stripe',
+    intentId: session.id,
+  };
+  await order.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      checkoutUrl: session.url,
+    },
+  });
+});
+
+exports.stripeWebhook = async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const orderId = session.metadata.orderId;
+
+    await Order.findByIdAndUpdate(orderId, {
+      paymentStatus: 'paid',
+      status: 'confirmed',
+      payment: {
+        provider: 'stripe',
+        intentId: session.payment_intent,
+        paidAt: Date.now(),
+      },
+    });
+  }
+
+  res.status(200).json({ received: true });
+};
