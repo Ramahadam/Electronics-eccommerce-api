@@ -20,11 +20,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       if (!cart || !cart.items.length) {
         throw new AppError('Empty cart or user not found', 404);
       }
-
       const cartItems = cart.items.map((item) => ({
         product: item.product._id,
         name: item.product.title,
         price: item.unitPrice,
+        image: item.product.images[0],
         quantity: item.quantity,
       }));
 
@@ -70,7 +70,6 @@ exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   if (order.paymentStatus === 'paid') {
     return next(new AppError('Order already paid', 400));
   }
-
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     mode: 'payment',
@@ -79,6 +78,7 @@ exports.createCheckoutSession = catchAsync(async (req, res, next) => {
         currency: 'aed',
         product_data: {
           name: item.name,
+          images: [item.image],
         },
         unit_amount: item.price * 100, // AED → fils
       },
@@ -92,14 +92,13 @@ exports.createCheckoutSession = catchAsync(async (req, res, next) => {
     },
   });
 
-  console.log('===========Session created ========>>>>>');
-  console.log('session========>>>>>', session);
-
   // Save intent/session id
   order.payment = {
     provider: 'stripe',
     intentId: session.id,
+    paidAt: new Date(),
   };
+
   await order.save();
 
   res.status(200).json({
@@ -110,7 +109,7 @@ exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.stripeWebhook = async (req, res) => {
+exports.stripeWebhook = catchAsync(async (req, res, next) => {
   const sig = req.headers['stripe-signature'];
 
   let event;
@@ -128,16 +127,26 @@ exports.stripeWebhook = async (req, res) => {
     const session = event.data.object;
     const orderId = session.metadata.orderId;
 
-    await Order.findByIdAndUpdate(orderId, {
-      paymentStatus: 'paid',
-      status: 'confirmed',
-      payment: {
-        provider: 'stripe',
-        intentId: session.payment_intent,
-        paidAt: Date.now(),
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      {
+        $set: {
+          paymentStatus: 'paid',
+          status: 'confirmed',
+          payment: {
+            provider: 'stripe',
+            intentId: session.payment_intent,
+            paidAt: new Date(),
+          },
+        },
       },
-    });
+      { new: true },
+    );
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
   }
 
   res.status(200).json({ received: true });
-};
+});
