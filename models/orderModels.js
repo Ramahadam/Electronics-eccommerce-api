@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -16,6 +16,10 @@ const orderItemSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+    },
+    image: {
+      type: String,
+      required: true,
     },
     quantity: {
       type: Number,
@@ -49,8 +53,21 @@ const orderSchema = new mongoose.Schema(
       default: 'pending',
       index: true,
     },
+    paymentStatus: {
+      type: String,
+      enum: ['unpaid', 'paid', 'failed', 'refunded'],
+      default: 'unpaid',
+      index: true,
+    },
+    payment: {
+      provider: String,
+      intentId: String,
+      paidAt: Date,
+    },
   },
   { timestamps: true },
 );
 
-export default mongoose.model('Order', orderSchema);
+const Order = mongoose.model('Order', orderSchema);
+
+module.exports = Order;

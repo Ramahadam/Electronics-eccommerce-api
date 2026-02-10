@@ -22,7 +22,7 @@ const wishlistSchema = new mongoose.Schema(
 );
 
 // ✅ Add index for faster queries
-wishlistSchema.index({ user: 1 });
+
 wishlistSchema.index({ products: 1 });
 
 wishlistSchema.methods.removeItemFromWishlist = function (productId) {
