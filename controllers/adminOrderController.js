@@ -10,34 +10,29 @@ exports.createAdminOrder = catchAsync(async (req, res, next) => {
 
   try {
     await session.withTransaction(async () => {
-      //   const items = {
-      //     product: item.product._id,
-      //     name: item.product.title,
-      //     price: item.unitPrice,
-      //     quantity: item.quantity,
-      //   }
-
       const { userId, items } = req.body;
 
-      if ((!userId, !items || !items.length)) {
-        return new AppError('User Id and items are required', 400);
+      if (!userId || !items || !items.length) {
+        throw new AppError('UserId and items are required', 400);
       }
 
-      const totalAmount = (req.body.reduce(
+      const totalAmount = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0,
-      )[order] = await Order.create(
+      );
+
+      [order] = await Order.create(
         [
           {
             user: userId,
             items,
             totalAmount,
-            status: 'confirmed',
+            status: 'confirmed', // admin orders are usually confirmed
             paymentStatus: 'unpaid',
           },
         ],
         { session },
-      ));
+      );
     });
 
     res.status(201).json({
