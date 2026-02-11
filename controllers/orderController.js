@@ -60,7 +60,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.getOrders = catchAsync(async (req, res, next) => {
+exports.getMyOrders = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
 
   const orders = await Order.find({ user: userId })
