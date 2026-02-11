@@ -1,9 +1,14 @@
 const catchAsync = require('../utils/catchAsync');
+const APIFeatures = require('../utils/APIFeatures');
 const Cart = require('../models/cartModels');
 const Order = require('../models/orderModels');
 const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// ==============================
+// USER CONTROLLERS
+// ==============================
 
 exports.createOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -59,6 +64,104 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     await session.endSession();
   }
 });
+
+exports.getMyOrders = catchAsync(async (req, res, next) => {
+  const baseQuery = Order.find({ user: req.user.id });
+
+  const features = new APIFeatures(baseQuery, req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .pagination();
+
+  const countFeatures = new APIFeatures(
+    Order.find({ user: req.user.id }),
+    req.query,
+  ).filter();
+
+  const totalDocuments = await countFeatures.query.countDocuments();
+
+  const orders = await features.query;
+
+  const pagination = features.getPaginationMetadata(totalDocuments);
+
+  res.status(200).json({
+    status: 'success',
+    results: orders.length,
+    pagination,
+    data: { orders },
+  });
+});
+
+// ==============================
+// ADMIN CONTROLLERS
+// ==============================
+
+exports.createAdminOrder = catchAsync(async (req, res, next) => {
+  const session = await mongoose.startSession();
+  let order;
+
+  try {
+    await session.withTransaction(async () => {
+      const { userId, items } = req.body;
+
+      if (!userId || !items || !items.length) {
+        throw new AppError('UserId and items are required', 400);
+      }
+
+      const totalAmount = items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
+
+      [order] = await Order.create(
+        [
+          {
+            user: userId,
+            items,
+            totalAmount,
+            status: 'confirmed', // admin orders are usually confirmed
+            paymentStatus: 'unpaid',
+          },
+        ],
+        { session },
+      );
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: { order },
+    });
+  } finally {
+    await session.endSession();
+  }
+});
+
+exports.getAllOrders = catchAsync(async (req, res, next) => {
+  const features = new APIFeatures(Order.find().populate('user'), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .pagination();
+
+  const countFeatures = new APIFeatures(Order.find(), req.query).filter();
+  const totalDocuments = await countFeatures.query.countDocuments();
+
+  const orders = await features.query;
+
+  const pagination = features.getPaginationMetadata(totalDocuments);
+
+  res.status(200).json({
+    status: 'success',
+    results: orders.length,
+    pagination,
+    data: { orders },
+  });
+});
+
+// ==============================
+// STRIPE
+// ==============================
 
 exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.orderId);

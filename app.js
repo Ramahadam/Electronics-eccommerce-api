@@ -11,7 +11,7 @@ const app = express();
 
 // Stripe webhook lifted before express.json() - stripe require raw request body
 app.post(
-  '/api/v1/order/webhook/stripe',
+  '/api/v1/orders/webhook/stripe',
   express.raw({ type: 'application/json' }),
   stripeWebhookController,
 );
@@ -50,7 +50,7 @@ app.use('/api/v1/products', productRouter);
 app.use('/api/v1/wishlists', wishlistRouter);
 app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/cart', cartRoutes);
-app.use('/api/v1/order', orderRoutes);
+app.use('/api/v1/orders', orderRoutes);
 
 // Handle undefined routes
 app.all('*', (req, res, next) => {
