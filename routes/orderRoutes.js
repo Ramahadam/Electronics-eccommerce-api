@@ -2,26 +2,38 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
-const adminOrderController = require('../controllers/adminOrderController');
 const authMiddleware = require('../middleware/auth.middleware');
+
+// ==============================
+// AUTH ROUTES
+// ==============================
 
 router.use(authMiddleware.protect);
 
 router.use(authMiddleware.appendUserId);
 
+// ==============================
+// USER ROUTES
+// ==============================
+
 router.post('/', orderController.createOrder);
 
-// routes
 router.get('/my-orders', orderController.getMyOrders);
-router.get('/', restrictTo('admin'), orderController.getAllOrders);
 
-router.post(
-  '/admin',
-  authMiddleware.restrictTo('admin'),
-  adminOrderController.createAdminOrder,
-);
+// ==============================
+// STRIPE CHECKOUT SESSION
+// ==============================
 
-// checkout session
 router.post('/:orderId/checkout', orderController.createCheckoutSession);
+
+// ==============================
+// ADMIN ROUTES
+// ==============================
+
+router.use(authMiddleware.restrictTo('admin'));
+
+router.get('/', orderController.getAllOrders);
+
+router.post('/admin', orderController.createAdminOrder);
 
 module.exports = router;

@@ -5,6 +5,10 @@ const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+// ==============================
+// USER CONTROLLERS
+// ==============================
+
 exports.createOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
   let order;
@@ -60,21 +64,73 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.getMyOrders = catchAsync(async (req, res, next) => {
-  const userId = req.user.id;
-
-  const orders = await Order.find({ user: userId })
-    .populate('items.product', 'title images')
-    .sort('-createdAt');
+exports.getMyOrders = catchAsync(async (req, res) => {
+  const orders = await Order.find({ user: req.user.id });
 
   res.status(200).json({
     status: 'success',
     results: orders.length,
-    data: {
-      orders,
-    },
+    data: { orders },
   });
 });
+
+// ==============================
+// ADMIN CONTROLLERS
+// ==============================
+
+exports.createAdminOrder = catchAsync(async (req, res, next) => {
+  const session = await mongoose.startSession();
+  let order;
+
+  try {
+    await session.withTransaction(async () => {
+      const { userId, items } = req.body;
+
+      if (!userId || !items || !items.length) {
+        throw new AppError('UserId and items are required', 400);
+      }
+
+      const totalAmount = items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
+
+      [order] = await Order.create(
+        [
+          {
+            user: userId,
+            items,
+            totalAmount,
+            status: 'confirmed', // admin orders are usually confirmed
+            paymentStatus: 'unpaid',
+          },
+        ],
+        { session },
+      );
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: { order },
+    });
+  } finally {
+    await session.endSession();
+  }
+});
+
+exports.getAllOrders = catchAsync(async (req, res) => {
+  const orders = await Order.find().populate('user', 'name email');
+
+  res.status(200).json({
+    status: 'success',
+    results: orders.length,
+    data: { orders },
+  });
+});
+
+// ==============================
+// STRIPE
+// ==============================
 
 exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.orderId);
