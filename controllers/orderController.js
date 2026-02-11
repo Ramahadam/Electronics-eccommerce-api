@@ -60,6 +60,22 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   }
 });
 
+exports.getOrders = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+
+  const orders = await Order.find({ user: userId })
+    .populate('items.product', 'title images')
+    .sort('-createdAt');
+
+  res.status(200).json({
+    status: 'success',
+    results: orders.length,
+    data: {
+      orders,
+    },
+  });
+});
+
 exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.orderId);
 
