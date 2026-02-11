@@ -11,6 +11,8 @@ router.use(authMiddleware.appendUserId);
 
 router.post('/', orderController.createOrder);
 
+router.get('/', orderController.getOrder);
+
 router.post(
   '/admin',
   authMiddleware.restrictTo('admin'),
