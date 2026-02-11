@@ -1,4 +1,5 @@
 const catchAsync = require('../utils/catchAsync');
+const APIFeatures = require('../utils/APIFeatures');
 const Cart = require('../models/cartModels');
 const Order = require('../models/orderModels');
 const AppError = require('../utils/appError');
@@ -64,12 +65,30 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.getMyOrders = catchAsync(async (req, res) => {
-  const orders = await Order.find({ user: req.user.id });
+exports.getMyOrders = catchAsync(async (req, res, next) => {
+  const baseQuery = Order.find({ user: req.user.id });
+
+  const features = new APIFeatures(baseQuery, req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .pagination();
+
+  const countFeatures = new APIFeatures(
+    Order.find({ user: req.user.id }),
+    req.query,
+  ).filter();
+
+  const totalDocuments = await countFeatures.query.countDocuments();
+
+  const orders = await features.query;
+
+  const pagination = features.getPaginationMetadata(totalDocuments);
 
   res.status(200).json({
     status: 'success',
     results: orders.length,
+    pagination,
     data: { orders },
   });
 });
@@ -118,12 +137,24 @@ exports.createAdminOrder = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.getAllOrders = catchAsync(async (req, res) => {
-  const orders = await Order.find().populate('user', 'name email');
+exports.getAllOrders = catchAsync(async (req, res, next) => {
+  const features = new APIFeatures(Order.find().populate('user'), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .pagination();
+
+  const countFeatures = new APIFeatures(Order.find(), req.query).filter();
+  const totalDocuments = await countFeatures.query.countDocuments();
+
+  const orders = await features.query;
+
+  const pagination = features.getPaginationMetadata(totalDocuments);
 
   res.status(200).json({
     status: 'success',
     results: orders.length,
+    pagination,
     data: { orders },
   });
 });
