@@ -93,6 +93,31 @@ exports.getMyOrders = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.getOrderById = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Build query with authorization check
+  const query = { _id: id };
+
+  // If not admin, restrict to user's own orders
+  if (req.user?.role !== 'admin') {
+    query.user = req.userId;
+  }
+
+  const order = await Order.findOne(query)
+    .populate('items.product', 'title brand category images stock') // Get current product state
+    .populate('user', 'fullname email'); // Get user details (useful for admin)
+
+  if (!order) {
+    return next(new AppError('Order not found or you do not have access', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { order },
+  });
+});
+
 // ==============================
 // ADMIN CONTROLLERS
 // ==============================
