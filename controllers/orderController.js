@@ -118,6 +118,67 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.cancelOrder = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const isAdmin = req.user?.role === 'admin';
+
+  const session = await mongoose.startSession();
+
+  try {
+    await session.withTransaction(async () => {
+      // Find order with authorization check
+      const query = { _id: id };
+      if (!isAdmin) {
+        query.user = req.userId; // Users can only cancel their own orders
+      }
+
+      const order = await Order.findOne(query).session(session);
+
+      if (!order) {
+        throw new AppError('Order not found or you do not have access', 404);
+      }
+
+      // Check if already cancelled (idempotent)
+      if (order.status === 'cancelled') {
+        throw new AppError('Order is already cancelled', 400);
+      }
+
+      // Authorization: Define what each role can cancel
+      const canUserCancel = ['pending', 'confirmed'].includes(order.status);
+      const canAdminCancel = order.status !== 'delivered'; // Admin can cancel anything except delivered
+
+      if (!isAdmin && !canUserCancel) {
+        throw new AppError(
+          `Users cannot cancel orders with status: ${order.status}. Contact support.`,
+          403,
+        );
+      }
+
+      if (isAdmin && !canAdminCancel) {
+        throw new AppError(
+          'Cannot cancel delivered orders. Use refund process instead.',
+          400,
+        );
+      }
+
+      // Update order status to cancelled
+      order.status = 'cancelled';
+      await order.save({ session });
+    });
+
+    // Fetch updated order (outside transaction for clean response)
+    const updatedOrder = await Order.findById(id).populate('items.product');
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order cancelled successfully ',
+      data: { order: updatedOrder },
+    });
+  } finally {
+    await session.endSession();
+  }
+});
+
 // ==============================
 // ADMIN CONTROLLERS
 // ==============================
