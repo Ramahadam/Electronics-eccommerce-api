@@ -184,6 +184,73 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.updateOrderStatus = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  // Validate status value
+  const validStatuses = [
+    'pending',
+    'confirmed',
+    'shipped',
+    'delivered',
+    'cancelled',
+  ];
+  if (!validStatuses.includes(status)) {
+    return next(
+      new AppError(
+        `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+        400,
+      ),
+    );
+  }
+
+  const order = await Order.findById(id);
+
+  if (!order) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  // Validate status transitions
+  const currentStatus = order.status;
+  const validTransitions = {
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['shipped', 'cancelled'],
+    shipped: ['delivered'],
+    delivered: [], // Final state
+    cancelled: [], // Final state
+  };
+
+  // Allow setting same status (idempotent)
+  if (currentStatus === status) {
+    return res.status(200).json({
+      status: 'success',
+      message: `Order is already ${status}`,
+      data: { order },
+    });
+  }
+
+  // Check if transition is valid
+  if (!validTransitions[currentStatus].includes(status)) {
+    return next(
+      new AppError(
+        `Cannot transition from ${currentStatus} to ${status}. Valid transitions: ${validTransitions[currentStatus].join(', ') || 'none'}`,
+        400,
+      ),
+    );
+  }
+
+  // Update status
+  order.status = status;
+  await order.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: `Order status updated to ${status}`,
+    data: { order },
+  });
+});
+
 // ==============================
 // STRIPE
 // ==============================
