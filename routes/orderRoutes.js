@@ -37,4 +37,6 @@ router.get('/', orderController.getAllOrders);
 
 router.post('/admin', orderController.createAdminOrder);
 
+router.patch('/:id/status', orderController.updateOrderStatus);
+
 module.exports = router;
