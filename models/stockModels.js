@@ -65,4 +65,41 @@ const stockSchema = new mongoose.Schema(
 stockSchema.index({ product: 1 }, { unique: true });
 stockSchema.index({ quantity: 1 });
 
+/**
+ * Available stock = quantity - reserved
+ */
+
+stockSchema.virtual('available').get(function () {
+  return this.quantity - this.reserved;
+});
+
+/**
+ * Check if stock is low
+ */
+
+stockSchema.virtual('isLowStock').get(function () {
+  return this.available < this.minStock;
+});
+
+/**
+ * Check if product is out of stock
+ */
+
+stockSchema.virtual('isOutOfStock').get(function () {
+  return this.available === 0;
+});
+
+/**
+ * Stock status for display
+ */
+
+stockSchema.virtual('status').get(function () {
+  let available = this.available;
+  if (available === 0) return 'out_of_stock';
+  if (available <= this.minStock) return 'low_stock';
+  if (this.quantity >= this.maxStock) return 'overstocked';
+
+  return 'in_stock';
+});
+
 const Stock = mongoose.model('Stock', stockSchema);
