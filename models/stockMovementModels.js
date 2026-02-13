@@ -156,3 +156,31 @@ stockMovementSchema.statics.createMovement = async function (
 
   return movement;
 };
+
+/**
+ * Get movement history for a product
+ *
+ * @param {ObjectId} productId - Product ID
+ * @param {Object} options - Query options
+ * @param {Number} options.limit - Results limit
+ * @param {Number} options.skip - Results skip
+ * @param {String} options.type - Filter by type
+ * @returns {Array} Movement records
+ */
+
+stockMovementSchema.statics.getProductHistory = async function (
+  productId,
+  options,
+) {
+  const { skip, limit, type } = options;
+
+  const query = { product: productId };
+  if (type) query.type = type;
+
+  return this.find(query)
+    .populate('userId', 'fullname email')
+    .populate('orderId', 'status totalAmount')
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .skip(skip);
+};
