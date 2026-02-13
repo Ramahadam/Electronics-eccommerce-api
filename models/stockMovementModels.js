@@ -87,3 +87,9 @@ const stockMovementSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   },
 );
+
+//INDEXES
+stockMovementSchema.index({ product: 1, createdAt: -1 });
+stockMovementSchema.index({ orderId: 1 });
+stockMovementSchema.index({ type: 1, createdAt: -1 });
+stockMovementSchema.index({ usrId: 1, createdAt: -1 });
