@@ -149,4 +149,41 @@ stockSchema.statics.getLowStockProducts = async function (limit = 20) {
     .limit(limit);
 };
 
+// INSTANCE METHODS
+
+/**
+ * Reserve stock for an order
+ * This prevent race condition where two users try to buy the last item (overselling)
+ * @param {Number} quantity - Quantity to reserve
+ * @param {Object} session - Mongoose session for transaction
+ * @returns {Object|null} update state or null if insufficient
+ */
+
+stockSchema.methods.reserve = async function (quantity, session = null) {
+  const Stock = mongoose.model('Stock');
+
+  // CRITICAL: Atomic operation with conditional update
+  const updatedStock = await Stock.findOneAndUpdate(
+    {
+      _id: this._id,
+      // Check: available stock >= requested quantity
+      $expr: {
+        $gte: [{ $subtract: ['$quantity', '$reserved'] }, quantity],
+      },
+    },
+    {
+      // If check passes, increment reserved
+      $inc: { reserved: quantity },
+      $set: { lastSold: new Date() },
+    },
+    {
+      new: true,
+      session,
+    },
+  );
+
+  // If updatedStock is null, insufficient stock
+  return updatedStock;
+};
+
 const Stock = mongoose.model('Stock', stockSchema);
