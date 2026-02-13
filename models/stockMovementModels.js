@@ -224,3 +224,31 @@ stockMovementSchema.statics.getMovementsByDateRange = async function (
     .populate('user', 'fullname')
     .sort({ createdAt: -1 });
 };
+
+/**
+ * Get movement summary (aggregated stats)
+ *
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @returns {Object} Summary statistics
+ */
+
+stockMovementSchema.statics.getMovementSummaryStats = async function (
+  startDate,
+  endDate,
+) {
+  const summary = this.aggregate([
+    {
+      $match: { createdAt: { $gte: { startDate }, $lte: { endDate } } },
+    },
+    {
+      $group: {
+        _id: '$type',
+        count: { $sum: 1 },
+        totalQuantity: { $sum: { $abs: '$quantity' } },
+      },
+    },
+  ]);
+
+  return summary;
+};
