@@ -115,4 +115,38 @@ stockSchema.statics.getAvailableStock = async function (productId) {
   return stock ? stock.available : 0;
 };
 
+/**
+ * Get stock for multiple products (bulk query)
+ * @param {Array<ObjectId>} productIds - Array of product IDs
+ * @returns {Object} map of productId -> avaible stock
+ */
+
+stockSchema.statics.getStockForProducts = async function (productIds) {
+  const stocks = await this.find({
+    product: { $in: productIds },
+  }).select('product quantity reserved');
+
+  const stockMap = {};
+
+  stocks.forEach((stock) => {
+    stockMap[stock.product.toString()] = stock.available;
+  });
+
+  return stockMap;
+};
+
+/**
+ * Get product with low stock
+ * @param {Number} limit - Maximum results
+ * @returns {Array} products belowminStock threshold
+ */
+
+stockSchema.statics.getLowStockProducts = async function (limit = 20) {
+  return await this.find()
+    .where('quantity')
+    .lte(this.minStock)
+    .populate('product', 'title images unitPrice')
+    .limit(limit);
+};
+
 const Stock = mongoose.model('Stock', stockSchema);
