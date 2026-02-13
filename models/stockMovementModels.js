@@ -252,3 +252,54 @@ stockMovementSchema.statics.getMovementSummaryStats = async function (
 
   return summary;
 };
+
+// IMMUTABILITY ENFORCEMENT
+
+/**
+ * PRE-SAVE HOOK: Prevent updates
+ * Movements are immutable - can only create, never update
+ */
+
+stockMovementSchema.pre('save', function (next) {
+  if (!this.new) {
+    return next(
+      new AppError(
+        'Stock movements are not allowed to be updated.They are immutable audit records',
+        400,
+      ),
+    );
+  }
+
+  return next();
+});
+
+/**
+ * PREVENT DELETE
+ * Movements are permanent audit records
+ */
+
+stockMovementSchema.pre('deleteOne', function (next) {
+  return next(
+    new AppError(
+      'Stock movements cannot be deleted.They are immutable audit records',
+      400,
+    ),
+  );
+});
+
+/**
+ * PREVENT UPDATE
+ */
+
+stockMovementSchema.pre('findOneAndUpdate', function (next) {
+  return next(
+    new AppError(
+      'Stock movements cannot be updated.They are immutable audit records',
+      400,
+    ),
+  );
+});
+
+const StockMovement = mongoose.model('StockMovement', stockMovementSchema);
+
+module.exports = StockMovement;
