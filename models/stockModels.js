@@ -186,4 +186,28 @@ stockSchema.methods.reserve = async function (quantity, session = null) {
   return updatedStock;
 };
 
+/**
+ * Confirm reservation (convert reserved to sold)
+ */
+
+stockSchema.methods.confirm = async function name(quantity, session = null) {
+  const Stock = mongoose.model('Stock');
+
+  const updatedStock = await Stock.findOneAndUpdate(
+    this._id,
+    {
+      $inc: {
+        quantity: -quantity,
+        reserved: -quantity,
+      },
+    },
+    {
+      new: true,
+      session,
+    },
+  );
+
+  return updatedStock;
+};
+
 const Stock = mongoose.model('Stock', stockSchema);
