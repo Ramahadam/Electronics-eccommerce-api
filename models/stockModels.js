@@ -102,4 +102,17 @@ stockSchema.virtual('status').get(function () {
   return 'in_stock';
 });
 
+// STATIC METHODS
+
+/**
+ * Get avaible stock for product
+ * @param {ObjectId} productId - Product ID
+ * @returns {number} Available stock (quantity - reserved)
+ */
+
+stockSchema.statics.getAvailableStock = async function (productId) {
+  const stock = await this.findOne({ product: productId });
+  return stock ? stock.available : 0;
+};
+
 const Stock = mongoose.model('Stock', stockSchema);
