@@ -184,3 +184,15 @@ stockMovementSchema.statics.getProductHistory = async function (
     .limit(limit)
     .skip(skip);
 };
+
+/**
+ * Get movement history for an order
+ *
+ * @param {ObjectId} orderId - Order ID
+ * @returns {Array} Movement records
+ */
+stockMovementSchema.statics.getOrderMovements = async function (orderId) {
+  return this.find({ orderId })
+    .populate('product', 'title images')
+    .sort({ createdAt: 1 });
+};
