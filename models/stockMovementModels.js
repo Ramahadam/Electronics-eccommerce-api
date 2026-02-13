@@ -196,3 +196,31 @@ stockMovementSchema.statics.getOrderMovements = async function (orderId) {
     .populate('product', 'title images')
     .sort({ createdAt: 1 });
 };
+
+/**
+ * Get movements by date range
+ *
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @param {Object} filters - Additional filters
+ * @returns {Array} Movement records
+ */
+
+stockMovementSchema.statics.getMovementsByDateRange = async function (
+  startDate,
+  endDate,
+  filters,
+) {
+  const query = {
+    createdAt: {
+      $gte: { startDate },
+      $lte: { endDate },
+    },
+    ...filters,
+  };
+
+  return this.find(query)
+    .populate('product', 'title')
+    .populate('user', 'fullname')
+    .sort({ createdAt: -1 });
+};
