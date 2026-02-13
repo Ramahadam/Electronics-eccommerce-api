@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-
+const Stock = require('./stockModels');
+const AppError = require('../utils/appError');
 const stockMovementSchema = new mongoose.Schema(
   {
     product: {
@@ -93,3 +94,65 @@ stockMovementSchema.index({ product: 1, createdAt: -1 });
 stockMovementSchema.index({ orderId: 1 });
 stockMovementSchema.index({ type: 1, createdAt: -1 });
 stockMovementSchema.index({ usrId: 1, createdAt: -1 });
+
+// VIRTUAL FIELDS
+
+/**
+ * Movement direction (in or out)
+ */
+stockMovementSchema.virtual('direction').get(function () {
+  return this.quantity >= 0 ? 'in' : 'out';
+});
+
+/**
+ * Absolute quantity (for display)
+ */
+stockMovementSchema.virtual('absoluteQuantity').get(function () {
+  return Math.abs(this.quantity);
+});
+
+// STATIC METHODS
+
+/**
+ * Create stock movement with automatic balance calculation
+ *
+ * This is the ONLY way to create movements (ensures consistency)
+ *
+ * @param {Object} data - Movement data
+ * @param {ObjectId} data.product - Product ID
+ * @param {String} data.type - Movement type
+ * @param {Number} data.quantity - Quantity change
+ * @param {ObjectId} [data.orderId] - Order ID (optional)
+ * @param {ObjectId} [data.userId] - User ID (optional)
+ * @param {String} [data.reason] - Reason for change
+ * @param {Object} session - Mongoose session for transaction
+ * @returns {Object} Created movement
+ */
+
+stockMovementSchema.statics.createMovement = async function (
+  data,
+  session = null,
+) {
+  const Stock = mongoose.model('Stock');
+
+  // Get current stock balance
+  const stock = await Stock.findOne({ product: data.product }).session(session);
+
+  if (!stock) {
+    throw new Error('Stock record not found for product');
+  }
+
+  // Create movement with calculated balances
+  const [movement] = await this.create(
+    [
+      {
+        ...data,
+        balanceBefore: stock.quantity,
+        balanceAfter: stock.quantity + data.quantity,
+      },
+    ],
+    { session },
+  );
+
+  return movement;
+};
