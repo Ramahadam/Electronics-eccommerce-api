@@ -62,29 +62,30 @@ const stockSchema = new mongoose.Schema(
   },
 );
 
+// INDEXES
 stockSchema.index({ product: 1 }, { unique: true });
-stockSchema.index({ quantity: 1 });
+stockSchema.index({ quantity: 1 }); // For low stock queries
+
+// VIRTUAL FIELDS
 
 /**
  * Available stock = quantity - reserved
+ * This is what customers can actually buy
  */
-
 stockSchema.virtual('available').get(function () {
   return this.quantity - this.reserved;
 });
 
 /**
- * Check if stock is low
+ * Check if stock is low (below minimum threshold)
  */
-
 stockSchema.virtual('isLowStock').get(function () {
-  return this.available < this.minStock;
+  return this.available <= this.minStock;
 });
 
 /**
  * Check if product is out of stock
  */
-
 stockSchema.virtual('isOutOfStock').get(function () {
   return this.available === 0;
 });
@@ -92,24 +93,21 @@ stockSchema.virtual('isOutOfStock').get(function () {
 /**
  * Stock status for display
  */
-
 stockSchema.virtual('status').get(function () {
-  let available = this.available;
+  const available = this.available;
   if (available === 0) return 'out_of_stock';
   if (available <= this.minStock) return 'low_stock';
   if (this.quantity >= this.maxStock) return 'overstocked';
-
   return 'in_stock';
 });
 
 // STATIC METHODS
 
 /**
- * Get avaible stock for product
+ * Get available stock for a product
  * @param {ObjectId} productId - Product ID
- * @returns {number} Available stock (quantity - reserved)
+ * @returns {Number} Available stock (quantity - reserved)
  */
-
 stockSchema.statics.getAvailableStock = async function (productId) {
   const stock = await this.findOne({ product: productId });
   return stock ? stock.available : 0;
@@ -118,16 +116,14 @@ stockSchema.statics.getAvailableStock = async function (productId) {
 /**
  * Get stock for multiple products (bulk query)
  * @param {Array<ObjectId>} productIds - Array of product IDs
- * @returns {Object} map of productId -> avaible stock
+ * @returns {Object} Map of productId -> available stock
  */
-
 stockSchema.statics.getStockForProducts = async function (productIds) {
   const stocks = await this.find({
     product: { $in: productIds },
   }).select('product quantity reserved');
 
   const stockMap = {};
-
   stocks.forEach((stock) => {
     stockMap[stock.product.toString()] = stock.available;
   });
@@ -136,29 +132,35 @@ stockSchema.statics.getStockForProducts = async function (productIds) {
 };
 
 /**
- * Get product with low stock
- * @param {Number} limit - Maximum results
- * @returns {Array} products belowminStock threshold
+ * Get products with low stock
+ * @param {Number} limit - Maximum results (default: 20)
+ * @param {Number} threshold - Stock threshold (default: 10)
+ * @returns {Promise<Array>} Products below threshold
  */
-
-stockSchema.statics.getLowStockProducts = async function (limit = 20) {
+stockSchema.statics.getLowStockProducts = async function (
+  limit = 20,
+  threshold = 10,
+) {
   return await this.find()
     .where('quantity')
-    .lte(this.minStock)
+    .lte(threshold)
     .populate('product', 'title images unitPrice')
-    .limit(limit);
+    .sort('quantity') // Lowest stock first
+    .limit(limit)
+    .exec();
 };
 
 // INSTANCE METHODS
 
 /**
- * Reserve stock for an order
- * This prevent race condition where two users try to buy the last item (overselling)
+ * Reserve stock for an order (ATOMIC OPERATION)
+ *
+ * This prevents race conditions where two users try to buy the last item
+ *
  * @param {Number} quantity - Quantity to reserve
  * @param {Object} session - Mongoose session for transaction
- * @returns {Object|null} update state or null if insufficient
+ * @returns {Object|null} Updated stock or null if insufficient
  */
-
 stockSchema.methods.reserve = async function (quantity, session = null) {
   const Stock = mongoose.model('Stock');
 
@@ -188,17 +190,23 @@ stockSchema.methods.reserve = async function (quantity, session = null) {
 
 /**
  * Confirm reservation (convert reserved to sold)
+ *
+ * Called when payment is confirmed
+ * Reduces both quantity and reserved
+ *
+ * @param {Number} quantity - Quantity to confirm
+ * @param {Object} session - Mongoose session for transaction
+ * @returns {Object} Updated stock
  */
-
-stockSchema.methods.confirm = async function name(quantity, session = null) {
+stockSchema.methods.confirm = async function (quantity, session = null) {
   const Stock = mongoose.model('Stock');
 
-  const updatedStock = await Stock.findOneAndUpdate(
+  const updatedStock = await Stock.findByIdAndUpdate(
     this._id,
     {
       $inc: {
-        quantity: -quantity,
-        reserved: -quantity,
+        quantity: -quantity, // Reduce actual stock
+        reserved: -quantity, // Remove from reserved
       },
     },
     {
@@ -211,20 +219,22 @@ stockSchema.methods.confirm = async function name(quantity, session = null) {
 };
 
 /**
- * Release reservation
+ * Release reservation (return to available)
+ *
  * Called when order is cancelled
- * Decrease reserved, making stock avaible again
+ * Decreases reserved, making stock available again
+ *
+ * @param {Number} quantity - Quantity to release
+ * @param {Object} session - Mongoose session for transaction
+ * @returns {Object} Updated stock
  */
-
 stockSchema.methods.release = async function (quantity, session = null) {
   const Stock = mongoose.model('Stock');
 
-  const updatedStock = await Stock.findOneAndUpdate(
+  const updatedStock = await Stock.findByIdAndUpdate(
     this._id,
     {
-      $inc: {
-        reserve: -quantity,
-      },
+      $inc: { reserved: -quantity }, // Release back to available
     },
     {
       new: true,
@@ -235,4 +245,48 @@ stockSchema.methods.release = async function (quantity, session = null) {
   return updatedStock;
 };
 
+/**
+ * Adjust stock quantity (manual correction)
+ *
+ * Used by admins for:
+ * - Adding new inventory
+ * - Correcting errors
+ * - Marking damaged items
+ *
+ * @param {Number} adjustment - Positive to add, negative to subtract
+ * @param {Object} session - Mongoose session for transaction
+ * @returns {Object} Updated stock
+ */
+stockSchema.methods.adjust = async function (adjustment, session = null) {
+  const Stock = mongoose.model('Stock');
+
+  const updatedStock = await Stock.findByIdAndUpdate(
+    this._id,
+    {
+      $inc: { quantity: adjustment },
+      $set:
+        adjustment > 0
+          ? { lastRestocked: new Date() }
+          : { lastSold: new Date() },
+    },
+    {
+      new: true,
+      session,
+    },
+  );
+
+  return updatedStock;
+};
+
+/**
+ * Check if stock can fulfill an order
+ * @param {Number} quantity - Requested quantity
+ * @returns {Boolean}
+ */
+stockSchema.methods.canFulfill = function (quantity) {
+  return this.available >= quantity;
+};
+
 const Stock = mongoose.model('Stock', stockSchema);
+
+module.exports = Stock;
