@@ -210,4 +210,29 @@ stockSchema.methods.confirm = async function name(quantity, session = null) {
   return updatedStock;
 };
 
+/**
+ * Release reservation
+ * Called when order is cancelled
+ * Decrease reserved, making stock avaible again
+ */
+
+stockSchema.methods.release = async function (quantity, session = null) {
+  const Stock = mongoose.model('Stock');
+
+  const updatedStock = await Stock.findOneAndUpdate(
+    this._id,
+    {
+      $inc: {
+        reserve: -quantity,
+      },
+    },
+    {
+      new: true,
+      session,
+    },
+  );
+
+  return updatedStock;
+};
+
 const Stock = mongoose.model('Stock', stockSchema);
