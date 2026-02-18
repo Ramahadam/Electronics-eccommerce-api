@@ -174,25 +174,67 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   });
 });
 
-// PATCH /api/cart/:itemId
+/**
+ * PATCH /api/cart/:itemId
+ *
+ * STOCK INTEGRATION:
+ * - Validate new quantity against available stock
+ * - Allow decrease without stock check
+ * - Show available stock in error message
+ */
 exports.updateCartItem = catchAsync(async (req, res, next) => {
   const { quantity } = req.body;
   const { itemId } = req.params;
 
+  // Validate quantity
+  if (quantity < 0) {
+    return next(new AppError('Quantity cannot be negative', 400));
+  }
+
   const cart = await Cart.findOne({ user: req.userId });
-  if (!cart) throw new AppError('Cart not found', 404);
+  if (!cart) {
+    return next(new AppError('Cart not found', 404));
+  }
 
   const itemIndex = cart.items.findIndex(
     (item) => item.product.toString() === itemId,
   );
 
-  if (itemIndex < 0) throw new AppError('Item not found in cart', 404);
+  if (itemIndex < 0) {
+    return next(new AppError('Item not found in cart', 404));
+  }
 
+  const currentQuantity = cart.items[itemIndex].quantity;
+
+  // If removing item or quantity is 0
   if (quantity <= 0) {
     cart.items = cart.items.filter(
       (item) => item.product.toString() !== itemId,
     );
+  } else if (quantity > currentQuantity) {
+    // ✅ STOCK VALIDATION: Only check when increasing quantity
+    const stock = await Stock.findOne({ product: itemId });
+
+    if (!stock) {
+      return next(
+        new AppError('Stock information not available for this product', 404),
+      );
+    }
+
+    const availableStock = stock.quantity - stock.reserved;
+
+    if (quantity > availableStock) {
+      return next(
+        new AppError(
+          `Cannot update to ${quantity} item(s). Only ${availableStock} available in stock`,
+          400,
+        ),
+      );
+    }
+
+    cart.items[itemIndex].quantity = quantity;
   } else {
+    // Decreasing quantity - no stock check needed
     cart.items[itemIndex].quantity = quantity;
   }
 
