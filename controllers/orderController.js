@@ -400,6 +400,12 @@ exports.createAdminOrder = catchAsync(async (req, res, next) => {
   }
 });
 
+/**
+ * GET ALL ORDERS (ADMIN)
+ *
+ * No stock integration needed
+ */
+
 exports.getAllOrders = catchAsync(async (req, res, next) => {
   const features = new APIFeatures(Order.find().populate('user'), req.query)
     .filter()
@@ -490,9 +496,14 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
 });
 
 // ==============================
-// STRIPE
+// STRIPE INTEGRATION
 // ==============================
 
+/**
+ * CREATE CHECKOUT SESSION
+ *
+ * No additional stock integration needed (already reserved)
+ */
 exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.orderId);
 
@@ -542,6 +553,13 @@ exports.createCheckoutSession = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * STRIPE WEBHOOK
+ *
+ * STOCK INTEGRATION:
+ * 1. Confirm stock reservation (convert reserved to sold)
+ * 2. Record stock movements
+ */
 exports.stripeWebhook = catchAsync(async (req, res, next) => {
   const sig = req.headers['stripe-signature'];
 
@@ -557,27 +575,73 @@ exports.stripeWebhook = catchAsync(async (req, res, next) => {
   }
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const orderId = session.metadata.orderId;
+    const session = await mongoose.startSession();
 
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      {
-        $set: {
-          paymentStatus: 'paid',
-          status: 'confirmed',
-          payment: {
-            provider: 'stripe',
-            intentId: session.payment_intent,
-            paidAt: new Date(),
-          },
-        },
-      },
-      { new: true },
-    );
+    try {
+      await session.withTransaction(async () => {
+        const stripeSession = event.data.object;
+        const orderId = stripeSession.metadata.orderId;
 
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+        const order = await Order.findById(orderId).session(session);
+
+        if (!order) {
+          throw new Error('Order not found in webhook');
+        }
+
+        // ========================================
+        // CONFIRM STOCK (Reserved → Sold)
+        // ========================================
+
+        for (const item of order.items) {
+          const stock = await Stock.findOne({ product: item.product }).session(
+            session,
+          );
+
+          if (!stock) {
+            console.warn(`Stock not found for product ${item.product}`);
+            continue;
+          }
+
+          // Confirm reservation: reduce quantity and reserved
+          await stock.confirm(item.quantity, session);
+
+          // Record confirmed sale movement
+          await StockMovement.create(
+            [
+              {
+                product: item.product,
+                type: 'confirmed_sale',
+                quantity: -item.quantity,
+                balanceBefore: stock.quantity + item.quantity,
+                balanceAfter: stock.quantity,
+                orderId: order._id,
+                reason: 'Payment confirmed',
+                metadata: {
+                  paymentProvider: 'stripe',
+                  paymentIntent: stripeSession.payment_intent,
+                  productName: item.name,
+                },
+              },
+            ],
+            { session },
+          );
+        }
+
+        // Update order
+        order.paymentStatus = 'paid';
+        order.status = 'confirmed';
+        order.payment = {
+          provider: 'stripe',
+          intentId: stripeSession.payment_intent,
+          paidAt: new Date(),
+        };
+        await order.save({ session });
+      });
+    } catch (error) {
+      console.error('Webhook transaction failed:', error);
+      return res.status(500).json({ error: 'Webhook processing failed' });
+    } finally {
+      await session.endSession();
     }
   }
 
