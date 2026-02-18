@@ -77,7 +77,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       // Step 2: Reserve stock for each item (ATOMIC OPERATIONS)
       for (const { stock, item } of stockValidations) {
         // Reserve stock atomically
-        const updatedStock = await stock.reserve(item.quantity, session);
+        const updatedStock = await stock.reserved(item.quantity, session);
 
         if (!updatedStock) {
           throw new AppError(
@@ -309,10 +309,12 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
   }
 });
 
-// ==============================
-// ADMIN CONTROLLERS
-// ==============================
-
+/**
+ * CREATE ADMIN ORDER
+ *
+ * STOCK INTEGRATION:
+ * Same as regular order creation but with admin privileges
+ */
 exports.createAdminOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
   let order;
@@ -323,6 +325,50 @@ exports.createAdminOrder = catchAsync(async (req, res, next) => {
 
       if (!userId || !items || !items.length) {
         throw new AppError('UserId and items are required', 400);
+      }
+
+      // ========================================
+      // STOCK VALIDATION & RESERVATION
+      // ========================================
+
+      // Validate and reserve stock for each item
+      for (const item of items) {
+        const stock = await Stock.findOne({ product: item.product }).session(
+          session,
+        );
+
+        if (!stock) {
+          throw new AppError(
+            `Stock information not available for product ${item.product}`,
+            404,
+          );
+        }
+
+        // Reserve stock
+        const updatedStock = await stock.reserved(item.quantity, session);
+
+        if (!updatedStock) {
+          throw new AppError(
+            `Insufficient stock for product ${item.product}`,
+            400,
+          );
+        }
+
+        // Record movement
+        await StockMovement.create(
+          [
+            {
+              product: item.product,
+              type: 'sale',
+              quantity: -item.quantity,
+              balanceBefore: stock.quantity,
+              balanceAfter: updatedStock.quantity,
+              userId: req.userId, // Admin who created the order
+              reason: 'Admin order creation',
+            },
+          ],
+          { session },
+        );
       }
 
       const totalAmount = items.reduce(
@@ -336,7 +382,7 @@ exports.createAdminOrder = catchAsync(async (req, res, next) => {
             user: userId,
             items,
             totalAmount,
-            status: 'confirmed', // admin orders are usually confirmed
+            status: 'confirmed',
             paymentStatus: 'unpaid',
           },
         ],
@@ -346,6 +392,7 @@ exports.createAdminOrder = catchAsync(async (req, res, next) => {
 
     res.status(201).json({
       status: 'success',
+      message: 'Admin order created successfully. Stock reserved.',
       data: { order },
     });
   } finally {
