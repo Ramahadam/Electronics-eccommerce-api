@@ -248,13 +248,18 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
     },
   });
 });
-
-// DELETE /api/cart/:itemId
+/**
+ * DELETE /api/cart/:itemId
+ *
+ * No stock integration needed - just removing from cart
+ */
 exports.removeCartItem = catchAsync(async (req, res, next) => {
   const { itemId } = req.params;
 
   const cart = await Cart.findOne({ user: req.userId });
-  if (!cart) throw new AppError('Cart not found', 404);
+  if (!cart) {
+    return next(new AppError('Cart not found', 404));
+  }
 
   cart.items = cart.items.filter((item) => item.product.toString() !== itemId);
 
@@ -269,7 +274,11 @@ exports.removeCartItem = catchAsync(async (req, res, next) => {
   });
 });
 
-// DELETE /api/cart
+/**
+ * DELETE /api/cart
+ *
+ * No stock integration needed - just clearing cart
+ */
 exports.clearCart = catchAsync(async (req, res, next) => {
   const cart = await Cart.findOneAndUpdate(
     { user: req.userId },
@@ -282,7 +291,9 @@ exports.clearCart = catchAsync(async (req, res, next) => {
     { new: true },
   );
 
-  if (!cart) throw new AppError('Cart not found', 404);
+  if (!cart) {
+    return next(new AppError('Cart not found', 404));
+  }
 
   res.status(200).json({
     status: 'success',
