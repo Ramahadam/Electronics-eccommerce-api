@@ -149,6 +149,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     await session.endSession();
   }
 });
+
+/**
+ * GET MY ORDERS
+ *
+ * No stock integration needed - just listing orders
+ */
+
 exports.getMyOrders = catchAsync(async (req, res, next) => {
   const baseQuery = Order.find({ user: req.user.id });
 
@@ -202,61 +209,100 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * CANCEL ORDER
+ *
+ * STOCK INTEGRATION:
+ * 1. Validate order can be cancelled
+ * 2. Release reserved stock
+ * 3. Record stock movements
+ * 4. All within transaction
+ */
 exports.cancelOrder = catchAsync(async (req, res, next) => {
   const { id } = req.params;
-  const isAdmin = req.user?.role === 'admin';
-
   const session = await mongoose.startSession();
 
   try {
     await session.withTransaction(async () => {
-      // Find order with authorization check
-      const query = { _id: id };
-      if (!isAdmin) {
-        query.user = req.userId; // Users can only cancel their own orders
-      }
-
-      const order = await Order.findOne(query).session(session);
+      // Get order
+      const order = await Order.findOne({
+        _id: id,
+        user: req.userId,
+      }).session(session);
 
       if (!order) {
-        throw new AppError('Order not found or you do not have access', 404);
+        throw new AppError('Order not found', 404);
       }
 
-      // Check if already cancelled (idempotent)
-      if (order.status === 'cancelled') {
-        throw new AppError('Order is already cancelled', 400);
-      }
-
-      // Authorization: Define what each role can cancel
-      const canUserCancel = ['pending', 'confirmed'].includes(order.status);
-      const canAdminCancel = order.status !== 'delivered'; // Admin can cancel anything except delivered
-
-      if (!isAdmin && !canUserCancel) {
+      // Check if order can be cancelled
+      const cancellableStatuses = ['pending', 'confirmed'];
+      if (!cancellableStatuses.includes(order.status)) {
         throw new AppError(
-          `Users cannot cancel orders with status: ${order.status}. Contact support.`,
-          403,
-        );
-      }
-
-      if (isAdmin && !canAdminCancel) {
-        throw new AppError(
-          'Cannot cancel delivered orders. Use refund process instead.',
+          `Cannot cancel order with status: ${order.status}. Please contact support.`,
           400,
         );
       }
 
-      // Update order status to cancelled
+      if (order.status === 'cancelled') {
+        throw new AppError('Order is already cancelled', 400);
+      }
+
+      // ========================================
+      // STOCK RELEASE
+      // ========================================
+
+      // Release reserved stock for each item
+      for (const item of order.items) {
+        const stock = await Stock.findOne({ product: item.product }).session(
+          session,
+        );
+
+        if (!stock) {
+          // Log warning but don't fail (product might have been deleted)
+          console.warn(`Stock not found for product ${item.product}`);
+          continue;
+        }
+
+        // Check order status to determine stock action
+        if (order.paymentStatus === 'paid') {
+          // Payment confirmed: Add back to quantity
+          await stock.adjust(item.quantity, session);
+        } else {
+          // Payment not confirmed: Release reserved
+          await stock.release(item.quantity, session);
+        }
+
+        // Record stock movement
+        await StockMovement.create(
+          [
+            {
+              product: item.product,
+              type: 'return',
+              quantity: item.quantity, // Positive = returned to stock
+              balanceBefore: stock.quantity,
+              balanceAfter: stock.quantity + item.quantity,
+              orderId: order._id,
+              userId: req.userId,
+              reason: 'Order cancelled by user',
+              metadata: {
+                orderStatus: order.status,
+                paymentStatus: order.paymentStatus,
+                productName: item.name,
+              },
+            },
+          ],
+          { session },
+        );
+      }
+
+      // Update order status
       order.status = 'cancelled';
       await order.save({ session });
     });
 
-    // Fetch updated order (outside transaction for clean response)
-    const updatedOrder = await Order.findById(id).populate('items.product');
-
     res.status(200).json({
       status: 'success',
-      message: 'Order cancelled successfully ',
-      data: { order: updatedOrder },
+      message: 'Order cancelled successfully. Stock restored.',
     });
   } finally {
     await session.endSession();
