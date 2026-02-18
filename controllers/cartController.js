@@ -72,15 +72,66 @@ exports.getCart = catchAsync(async (req, res, next) => {
   });
 });
 
-// POST /api/cart
+/**
+ * POST /api/cart
+ *
+ * STOCK INTEGRATION:
+ * - Validate stock availability before adding
+ * - Show clear error if insufficient stock
+ * - Suggest available quantity
+ */
+
 exports.addToCart = catchAsync(async (req, res, next) => {
   const { productId, quantity = 1 } = req.body;
 
+  // Validate quantity
+  if (quantity < 1) {
+    return next(new AppError('Quantity must be at least 1', 400));
+  }
+
+  // Get product
+  const product = await Product.findById(productId).select('unitPrice title');
+  if (!product) {
+    return next(new AppError('Product not found', 404));
+  }
+
+  // ✅ STOCK VALIDATION: Check available stock
+  const stock = await Stock.findOne({ product: productId });
+
+  if (!stock) {
+    return next(
+      new AppError('Stock information not available for this product', 404),
+    );
+  }
+
+  const availableStock = stock.quantity - stock.reserved;
+
+  // Get existing cart
   let cart = await Cart.findOne({ user: req.userId });
 
-  const product = await Product.findById(productId).select('unitPrice');
-  if (!product) throw new AppError('Product not found', 404);
+  // Calculate total quantity user is trying to add
+  let totalQuantityInCart = quantity;
 
+  if (cart) {
+    const existingItem = cart.items.find(
+      (item) => item.product.toString() === productId,
+    );
+    if (existingItem) {
+      totalQuantityInCart += existingItem.quantity;
+    }
+  }
+
+  // Check if total quantity exceeds available stock
+  if (totalQuantityInCart > availableStock) {
+    return next(
+      new AppError(
+        `Cannot add ${quantity} item(s). Only ${availableStock} available (you already have ${totalQuantityInCart - quantity} in cart)`,
+        400,
+      ),
+    );
+  }
+
+  // Create or update cart
   if (!cart) {
     cart = await Cart.create({
       user: req.userId,
@@ -111,8 +162,12 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   cart.totalPrice = await cart.calculateTotalPrice(cart.items);
   await cart.save();
 
+  // Populate product for response
+  await cart.populate('items.product');
+
   res.status(200).json({
     status: 'success',
+    message: `${quantity} × ${product.title} added to cart`,
     data: {
       cart,
     },
