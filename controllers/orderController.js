@@ -2,13 +2,25 @@ const catchAsync = require('../utils/catchAsync');
 const APIFeatures = require('../utils/APIFeatures');
 const Cart = require('../models/cartModels');
 const Order = require('../models/orderModels');
-const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
+const Stock = require('../models/stockModels');
+const StockMovement = require('../models/stockMovementModels');
+const AppError = require('../utils/appError');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // ==============================
 // USER CONTROLLERS
 // ==============================
+
+/**
+ * CREATE ORDER
+ *
+ * STOCK INTEGRATION:
+ * 1. Validate stock availability for all items
+ * 2. Reserve stock for each item
+ * 3. Record stock movements
+ * 4. All within transaction for atomicity
+ */
 
 exports.createOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -18,6 +30,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     await session.withTransaction(async () => {
       const userId = req.userId;
 
+      // Get cart with populated products
       const cart = await Cart.findOne({ user: userId })
         .populate('items.product')
         .session(session);
@@ -25,6 +38,76 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       if (!cart || !cart.items.length) {
         throw new AppError('Empty cart or user not found', 404);
       }
+
+      // ========================================
+      // STOCK VALIDATION & RESERVATION
+      // ========================================
+
+      // Step 1: Validate stock availability for ALL items FIRST
+      const stockValidations = [];
+
+      for (const item of cart.items) {
+        const stock = await Stock.findOne({
+          product: item.product._id,
+        }).session(session);
+
+        if (!stock) {
+          throw new AppError(
+            `Stock information not available for ${item.product.title}`,
+            404,
+          );
+        }
+
+        const availableStock = stock.quantity - stock.reserved;
+
+        if (availableStock < item.quantity) {
+          throw new AppError(
+            `Insufficient stock for ${item.product.title}. Available: ${availableStock}, Requested: ${item.quantity}`,
+            400,
+          );
+        }
+
+        stockValidations.push({
+          stock,
+          item,
+          availableStock,
+        });
+      }
+
+      // Step 2: Reserve stock for each item (ATOMIC OPERATIONS)
+      for (const { stock, item } of stockValidations) {
+        // Reserve stock atomically
+        const updatedStock = await stock.reserve(item.quantity, session);
+
+        if (!updatedStock) {
+          throw new AppError(
+            `Failed to reserve stock for ${item.product.title}. Insufficient stock.`,
+            400,
+          );
+        }
+
+        // Record stock movement
+        await StockMovement.create(
+          [
+            {
+              product: item.product._id,
+              type: 'sale',
+              quantity: -item.quantity, // Negative = reserved for sale
+              balanceBefore: stock.quantity,
+              balanceAfter: updatedStock.quantity,
+              userId: userId,
+              reason: `Stock reserved for order`,
+              metadata: {
+                reservedQuantity: item.quantity,
+                productTitle: item.product.title,
+              },
+            },
+          ],
+          { session },
+        );
+      }
+
+      // Step 3: Create order
       const cartItems = cart.items.map((item) => ({
         product: item.product._id,
         name: item.product.title,
@@ -49,6 +132,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         { session },
       );
 
+      // Step 4: Clear cart
       await Cart.findOneAndUpdate(
         { user: userId },
         { $set: { items: [], totalPrice: 0 } },
@@ -58,13 +142,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     res.status(201).json({
       status: 'success',
+      message: 'Order created successfully. Stock reserved.',
       data: { order },
     });
   } finally {
     await session.endSession();
   }
 });
-
 exports.getMyOrders = catchAsync(async (req, res, next) => {
   const baseQuery = Order.find({ user: req.user.id });
 
