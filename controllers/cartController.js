@@ -1,9 +1,17 @@
 const Cart = require('../models/cartModels');
 const Product = require('../models/productModels');
+const Stock = require('../models/stockModels');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 
-// GET /api/cart
+/**
+ * GET /api/cart
+ *
+ * STOCK INTEGRATION:
+ * - Populate stock info for each cart item
+ * - Show available quantity
+ * - Show low stock warnings
+ */
 exports.getCart = catchAsync(async (req, res, next) => {
   const cart = await Cart.findOne({ user: req.userId }).populate(
     'items.product',
@@ -19,10 +27,46 @@ exports.getCart = catchAsync(async (req, res, next) => {
     });
   }
 
+  // Get stock info for all products in cart
+  const productIds = cart.items.map((item) => item.product._id);
+  const stocks = await Stock.find({
+    product: { $in: productIds },
+  }).select('product quantity reserved');
+
+  // Create stock map for quick lookup
+  const stockMap = {};
+  stocks.forEach((stock) => {
+    stockMap[stock.product.toString()] = {
+      available: stock.quantity - stock.reserved,
+      quantity: stock.quantity,
+      reserved: stock.reserved,
+      isLowStock: stock.isLowStock,
+      status: stock.status,
+    };
+  });
+
+  // Enrich cart items with stock info
+  const enrichedItems = cart.items.map((item) => {
+    const stockInfo = stockMap[item.product._id.toString()] || {
+      available: 0,
+      quantity: 0,
+      reserved: 0,
+      isLowStock: true,
+      status: 'out_of_stock',
+    };
+
+    return {
+      ...item.toObject(),
+      stock: stockInfo,
+      // Warning if cart quantity exceeds available
+      exceedsStock: item.quantity > stockInfo.available,
+    };
+  });
+
   res.status(200).json({
     status: 'success',
     data: {
-      items: cart.items,
+      items: enrichedItems,
       totalPrice: cart.totalPrice,
     },
   });
