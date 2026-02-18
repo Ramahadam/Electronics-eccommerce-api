@@ -428,6 +428,18 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * UPDATE ORDER STATUS (ADMIN)
+ *
+ * CRITICAL STOCK INTEGRATION:
+ * - When status changes to 'cancelled' → Release/restore stock
+ * - Other status changes → No stock action needed
+ *
+ * Why stock handling is needed:
+ * 1. Admin cancelling order = same as user cancelling
+ * 2. Stock must be restored to inventory
+ * 3. Movement must be recorded for audit
+ */
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -440,6 +452,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     'delivered',
     'cancelled',
   ];
+
   if (!validStatuses.includes(status)) {
     return next(
       new AppError(
@@ -460,7 +473,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   const validTransitions = {
     pending: ['confirmed', 'cancelled'],
     confirmed: ['shipped', 'cancelled'],
-    shipped: ['delivered'],
+    shipped: ['delivered', 'cancelled'], // ✅ Admin can cancel shipped orders
     delivered: [], // Final state
     cancelled: [], // Final state
   };
@@ -484,7 +497,101 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Update status
+  // ========================================
+  // STOCK INTEGRATION: Handle Cancellation
+  // ========================================
+
+  if (status === 'cancelled') {
+    // Admin is cancelling the order - MUST restore stock
+    const session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        // Check if already cancelled (should not happen due to validation above, but safety check)
+        if (order.status === 'cancelled') {
+          throw new AppError('Order is already cancelled', 400);
+        }
+
+        // Release/restore stock for each item
+        for (const item of order.items) {
+          const stock = await Stock.findOne({ product: item.product }).session(
+            session,
+          );
+
+          if (!stock) {
+            console.warn(
+              `Stock not found for product ${item.product}. Skipping stock restoration.`,
+            );
+            continue;
+          }
+
+          // Determine stock action based on payment status
+          if (order.paymentStatus === 'paid') {
+            // Payment was confirmed: Add back to quantity
+            await stock.adjust(item.quantity, session);
+          } else {
+            // Payment not confirmed: Release reserved stock
+            await stock.release(item.quantity, session);
+          }
+
+          // Record stock movement
+          await StockMovement.create(
+            [
+              {
+                product: item.product,
+                type: 'return',
+                quantity: item.quantity, // Positive = returned
+                balanceBefore:
+                  order.paymentStatus === 'paid'
+                    ? stock.quantity - item.quantity
+                    : stock.quantity,
+                balanceAfter:
+                  order.paymentStatus === 'paid'
+                    ? stock.quantity
+                    : stock.quantity, // Reserved just released, quantity unchanged
+                orderId: order._id,
+                userId: req.userId, // Admin who cancelled
+                reason: `Order cancelled by admin (status change: ${currentStatus} → cancelled)`,
+                metadata: {
+                  previousStatus: currentStatus,
+                  paymentStatus: order.paymentStatus,
+                  productName: item.name,
+                  cancelledBy: 'admin',
+                },
+              },
+            ],
+            { session },
+          );
+        }
+
+        // Update order status
+        order.status = 'cancelled';
+        await order.save({ session });
+      });
+
+      await session.endSession();
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Order cancelled and stock restored successfully',
+        data: { order },
+      });
+    } catch (error) {
+      await session.endSession();
+      return next(error);
+    }
+  }
+
+  // ========================================
+  // Non-cancellation status updates (no stock action needed)
+  // ========================================
+
+  // For other status transitions (pending→confirmed, confirmed→shipped, shipped→delivered)
+  // No stock action is needed because:
+  // - Stock was already reserved when order was created
+  // - Stock was confirmed when payment was made
+  // - These status changes are just workflow updates
+
   order.status = status;
   await order.save();
 
@@ -494,7 +601,6 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     data: { order },
   });
 });
-
 // ==============================
 // STRIPE INTEGRATION
 // ==============================
