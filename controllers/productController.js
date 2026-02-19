@@ -75,9 +75,19 @@ exports.getProduct = catchAsync(async (req, res, next) => {
     },
   });
 });
-exports.createProduct = catchAsync(async (req, res, next) => {
-  const { images } = req.body;
 
+/**
+ * CREATE PRODUCT
+ *
+ * STOCK INTEGRATION:
+ * - Create stock record when product is created
+ * - Accept initial stock quantity from request
+ * - Record initial stock movement
+ */
+exports.createProduct = catchAsync(async (req, res, next) => {
+  const { images, initialStock = 0, minStock = 10, maxStock = 1000 } = req.body;
+
+  // Validate images
   if (!Array.isArray(images) || !images.length) {
     return next(new AppError('Images must not be empty array', 400));
   }
@@ -90,17 +100,94 @@ exports.createProduct = catchAsync(async (req, res, next) => {
     );
   }
 
-  const newProduct = await Product.create({
-    ...req.body,
-    images,
-  });
+  // Validate stock quantities
+  if (initialStock < 0) {
+    return next(new AppError('Initial stock cannot be negative', 400));
+  }
 
-  res.status(201).json({
-    status: 'success',
-    data: {
-      product: newProduct,
-    },
-  });
+  if (minStock < 0 || maxStock < 0) {
+    return next(new AppError('Min/max stock cannot be negative', 400));
+  }
+
+  if (maxStock < minStock) {
+    return next(new AppError('Max stock must be greater than min stock', 400));
+  }
+
+  // ========================================
+  // CREATE PRODUCT + STOCK (TRANSACTION)
+  // ========================================
+
+  const session = await mongoose.startSession();
+  let newProduct, newStock;
+
+  try {
+    await session.withTransaction(async () => {
+      // Step 1: Create product (without stock field)
+      [newProduct] = await Product.create(
+        [
+          {
+            ...req.body,
+            images,
+            // Don't include stock-related fields in product
+          },
+        ],
+        { session },
+      );
+
+      // Step 2: Create stock record
+      [newStock] = await Stock.create(
+        [
+          {
+            product: newProduct._id,
+            quantity: initialStock,
+            reserved: 0,
+            minStock: minStock,
+            maxStock: maxStock,
+            lastRestocked: initialStock > 0 ? new Date() : null,
+          },
+        ],
+        { session },
+      );
+
+      // Step 3: Record initial stock movement (if stock > 0)
+      if (initialStock > 0) {
+        await StockMovement.create(
+          [
+            {
+              product: newProduct._id,
+              type: 'initial',
+              quantity: initialStock,
+              balanceBefore: 0,
+              balanceAfter: initialStock,
+              userId: req.userId, // Admin who created product
+              reason: 'Initial stock on product creation',
+              metadata: {
+                productTitle: newProduct.title,
+                createdBy: 'admin',
+              },
+            },
+          ],
+          { session },
+        );
+      }
+    });
+
+    await session.endSession();
+
+    // Populate stock for response
+    await newProduct.populate('stock');
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Product and stock record created successfully',
+      data: {
+        product: newProduct,
+      },
+    });
+  } catch (error) {
+    await session.endSession();
+    return next(error);
+  }
 });
 
 exports.deleteProduct = catchAsync(async (req, res, next) => {
