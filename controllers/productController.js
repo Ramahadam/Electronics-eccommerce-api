@@ -203,11 +203,32 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * UPDATE PRODUCT
+ *
+ * STOCK INTEGRATION:
+ * - Product updates don't affect stock
+ * - Stock is managed separately via stock routes
+ * - Prevents accidental stock changes
+ */
 exports.updateProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+  // Remove stock-related fields from update to prevent accidental changes
+  const { initialStock, stock, minStock, maxStock, ...updateData } = req.body;
+
+  // Warn if stock fields were provided
+  if (initialStock !== undefined || stock !== undefined) {
+    return next(
+      new AppError(
+        'Cannot update stock via product endpoint. Use /api/stock/adjust instead',
+        400,
+      ),
+    );
+  }
+
+  const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
     new: true,
     runValidators: true,
-  });
+  }).populate('stock');
 
   if (!product) {
     return next(new AppError('No product found with that ID', 404));
