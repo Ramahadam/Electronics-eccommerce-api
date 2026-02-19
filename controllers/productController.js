@@ -1,10 +1,20 @@
 const Product = require('../models/productModels');
+const Stock = require('../models/stockModels');
+const StockMovement = require('../models/stockMovementModels');
 const { uploadImage } = require('../utils/uploadimages');
 const { isValidImageURL } = require('../utils/helper');
 const APIFeatures = require('../utils/APIFeatures');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const mongoose = require('mongoose');
 
+/**
+ * GET ALL PRODUCTS
+ *
+ * STOCK INTEGRATION:
+ * - Include stock info in response
+ * - Support filtering by stock status
+ */
 exports.getAllProducts = catchAsync(async (req, res, next) => {
   const features = new APIFeatures(Product.find(), req.query)
     .filter()
@@ -12,24 +22,20 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     .limitFields()
     .pagination();
 
-  // STEP 2: Get total count of documents matching the filter
-  // WHY? We need this to calculate totalPages for pagination metadata
-  // TRADE-OFF: This adds an extra database query, but it's necessary for complete pagination info
-
-  // Create a separate count query with the same filters
   const countFeatures = new APIFeatures(Product.find(), req.query).filter();
   const totalDocuments = await countFeatures.query.countDocuments();
 
-  // STEP 3: Execute the main query to get paginated products
-  const products = await features.query;
+  // Execute query and populate stock info
+  const products = await features.query.populate({
+    path: 'stock',
+    select: 'quantity reserved minStock maxStock',
+  });
 
-  // STEP 4: Generate pagination metadata
   const paginationMetadata = features.getPaginationMetadata(totalDocuments);
 
-  // STEP 5: Send response with products and pagination info
   res.status(200).json({
     status: 'success',
-    results: products.length, // Number of products in current page
+    results: products.length,
     pagination: paginationMetadata,
     data: {
       products,
