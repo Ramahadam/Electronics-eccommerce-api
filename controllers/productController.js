@@ -43,15 +43,26 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * GET SINGLE PRODUCT
+ *
+ * STOCK INTEGRATION:
+ * - Include detailed stock info
+ */
 exports.getProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id).populate({
-    path: 'reviews',
-    select: 'review rating user',
-    populate: {
-      path: 'user',
-      select: 'fullname -_id',
-    },
-  });
+  const product = await Product.findById(req.params.id)
+    .populate({
+      path: 'reviews',
+      select: 'review rating user',
+      populate: {
+        path: 'user',
+        select: 'fullname -_id',
+      },
+    })
+    .populate({
+      path: 'stock',
+      select: 'quantity reserved minStock maxStock lastRestocked',
+    });
 
   if (!product) {
     return next(new AppError('No product found with that ID', 404));
@@ -64,7 +75,6 @@ exports.getProduct = catchAsync(async (req, res, next) => {
     },
   });
 });
-
 exports.createProduct = catchAsync(async (req, res, next) => {
   const { images } = req.body;
 
