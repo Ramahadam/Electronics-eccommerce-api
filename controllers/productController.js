@@ -190,17 +190,65 @@ exports.createProduct = catchAsync(async (req, res, next) => {
   }
 });
 
+/**
+ * DELETE PRODUCT
+ *
+ * STOCK INTEGRATION:
+ * - Check for pending orders before deletion
+ * - Delete stock record with product
+ * - Prevent deletion if stock is reserved
+ */
 exports.deleteProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findByIdAndDelete(req.params.id);
+  const session = await mongoose.startSession();
 
-  if (!product) {
-    return next(new AppError('No product found with that ID', 404));
+  try {
+    await session.withTransaction(async () => {
+      const product = await Product.findById(req.params.id).session(session);
+
+      if (!product) {
+        throw new AppError('No product found with that ID', 404);
+      }
+
+      // Check stock status
+      const stock = await Stock.findOne({ product: req.params.id }).session(
+        session,
+      );
+
+      if (stock) {
+        // Check if stock is reserved
+        if (stock.reserved > 0) {
+          throw new AppError(
+            `Cannot delete product. ${stock.reserved} units are reserved for pending orders`,
+            400,
+          );
+        }
+
+        // Optional: Check if stock exists
+        if (stock.quantity > 0) {
+          throw new AppError(
+            `Cannot delete product. ${stock.quantity} units still in stock. Adjust stock to 0 first.`,
+            400,
+          );
+        }
+
+        // Delete stock record
+        await Stock.findOneAndDelete({ product: req.params.id }, { session });
+      }
+
+      // Delete product
+      await Product.findByIdAndDelete(req.params.id, { session });
+    });
+
+    await session.endSession();
+
+    res.status(204).json({
+      status: 'success',
+      data: null,
+    });
+  } catch (error) {
+    await session.endSession();
+    return next(error);
   }
-
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
 });
 
 /**
