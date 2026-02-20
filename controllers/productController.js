@@ -26,10 +26,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
   const totalDocuments = await countFeatures.query.countDocuments();
 
   // Execute query and populate stock info
-  const products = await features.query.populate({
-    path: 'stock',
-    select: 'quantity reserved minStock maxStock',
-  });
+  const products = await features.query.populate();
 
   const paginationMetadata = features.getPaginationMetadata(totalDocuments);
 
@@ -50,19 +47,14 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
  * - Include detailed stock info
  */
 exports.getProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id)
-    .populate({
-      path: 'reviews',
-      select: 'review rating user',
-      populate: {
-        path: 'user',
-        select: 'fullname -_id',
-      },
-    })
-    .populate({
-      path: 'stock',
-      select: 'quantity reserved minStock maxStock lastRestocked',
-    });
+  const product = await Product.findById(req.params.id).populate({
+    path: 'reviews',
+    select: 'review rating user',
+    populate: {
+      path: 'user',
+      select: 'fullname -_id',
+    },
+  });
 
   if (!product) {
     return next(new AppError('No product found with that ID', 404));
@@ -133,8 +125,8 @@ exports.createProduct = catchAsync(async (req, res, next) => {
         ],
         { session },
       );
-
       // Step 2: Create stock record
+
       [newStock] = await Stock.create(
         [
           {

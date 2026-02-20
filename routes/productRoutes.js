@@ -18,6 +18,7 @@ router
   .get(queryValidation, validate, productController.getAllProducts)
   .post(
     authMiddleware.protect,
+    authMiddleware.appendUserId,
     authMiddleware.restrictTo('admin'),
     createProductValidation,
     validate,

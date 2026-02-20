@@ -25,17 +25,13 @@ const createProductValidation = [
     .matches(/^[a-zA-Z0-9\s]+$/)
     .withMessage('Title can only contain letters, numbers, and spaces'),
 
-  body('price')
+  body('unitPrice')
     .isFloat({ min: 0, max: 1000000 })
     .withMessage('Price must be between 0 and 1,000,000'),
 
   body('category')
     .isIn(['laptop', 'desktop', 'cctv', 'printer'])
     .withMessage('Invalid category'),
-
-  body('stock')
-    .isInt({ min: 0 })
-    .withMessage('Stock must be a non-negative integer'),
 
   body('brand')
     .trim()

@@ -15,7 +15,6 @@ const verifyToken = async (req) => {
 // Middleware: Verify Firebase token and attach to req
 exports.protect = catchAsync(async (req, res, next) => {
   const { decoded, token } = await verifyToken(req);
-
   if (!token || !decoded) {
     throw new AppError('Invalid token or failed to verify token', 401);
   }

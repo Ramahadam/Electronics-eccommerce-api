@@ -6,8 +6,6 @@ const stockSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: [true, 'Product reference is required'],
-      unique: true, // One stock record per product
-      index: true,
     },
     quantity: {
       type: Number,

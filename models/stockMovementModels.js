@@ -7,7 +7,6 @@ const stockMovementSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: [true, 'Product reference is required'],
-      index: true,
     },
     type: {
       type: String,
@@ -53,7 +52,6 @@ const stockMovementSchema = new mongoose.Schema(
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
-      index: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
