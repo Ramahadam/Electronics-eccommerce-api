@@ -259,15 +259,14 @@ stockMovementSchema.statics.getMovementSummaryStats = async function (
  */
 
 stockMovementSchema.pre('save', function (next) {
-  if (!this.new) {
+  if (!this.isNew) {
     return next(
       new AppError(
-        'Stock movements are not allowed to be updated.They are immutable audit records',
+        'Stock movements are not allowed to be updated. They are immutable audit records',
         400,
       ),
     );
   }
-
   return next();
 });
 

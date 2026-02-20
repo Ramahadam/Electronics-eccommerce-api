@@ -25,8 +25,8 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
   const countFeatures = new APIFeatures(Product.find(), req.query).filter();
   const totalDocuments = await countFeatures.query.countDocuments();
 
-  // Execute query and populate stock info
-  const products = await features.query.populate();
+  // Execute query and populate stockInfo virtual
+  const products = await features.query.populate('stockInfo');
 
   const paginationMetadata = features.getPaginationMetadata(totalDocuments);
 
