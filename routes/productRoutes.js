@@ -30,6 +30,7 @@ router
   .get(productController.getProduct)
   .patch(
     authMiddleware.protect,
+    authMiddleware.appendUserId,
     authMiddleware.restrictTo('admin'),
     updateProductValidation,
     validate,
@@ -37,6 +38,7 @@ router
   )
   .delete(
     authMiddleware.protect,
+    authMiddleware.appendUserId,
     authMiddleware.restrictTo('admin'),
     productController.deleteProduct,
   );

@@ -47,14 +47,16 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
  * - Include detailed stock info
  */
 exports.getProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id).populate({
-    path: 'reviews',
-    select: 'review rating user',
-    populate: {
-      path: 'user',
-      select: 'fullname -_id',
-    },
-  });
+  const product = await Product.findById(req.params.id)
+    .populate({
+      path: 'reviews',
+      select: 'review rating user',
+      populate: {
+        path: 'user',
+        select: 'fullname -_id',
+      },
+    })
+    .populate('stockInfo');
 
   if (!product) {
     return next(new AppError('No product found with that ID', 404));
@@ -167,7 +169,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
     await session.endSession();
 
     // Populate stock for response
-    await newProduct.populate('stock');
+    await newProduct.populate('stockInfo');
 
     res.status(201).json({
       status: 'success',
@@ -254,7 +256,7 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   // Remove stock-related fields from update to prevent accidental changes
   const { initialStock, stock, minStock, maxStock, ...updateData } = req.body;
-
+  console.log(initialStock);
   // Warn if stock fields were provided
   if (initialStock !== undefined || stock !== undefined) {
     return next(
@@ -268,7 +270,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
     new: true,
     runValidators: true,
-  }).populate('stock');
+  }).populate('stockInfo');
 
   if (!product) {
     return next(new AppError('No product found with that ID', 404));

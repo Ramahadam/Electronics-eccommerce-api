@@ -65,7 +65,7 @@ const updateProductValidation = [
     .isLength({ min: 10, max: 40 })
     .withMessage('Title must be 10-40 characters'),
 
-  body('price')
+  body('unitPrice')
     .optional()
     .isFloat({ min: 0, max: 1000000 })
     .withMessage('Price must be between 0 and 1,000,000'),
@@ -73,10 +73,6 @@ const updateProductValidation = [
   body('category')
     .isIn(['laptop', 'desktop', 'cctv', 'printer'])
     .withMessage('Invalid category'),
-
-  body('stock')
-    .isInt({ min: 0 })
-    .withMessage('Stock must be a non-negative integer'),
 
   body('brand')
     .trim()

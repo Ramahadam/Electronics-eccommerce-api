@@ -43,7 +43,7 @@ const productsSchema = new Schema(
       type: Number,
       validate: {
         validator: function (val) {
-          return !val || val < this.unitPrice;
+          return !val || val > this.unitPrice;
         },
         message: 'Discount price {VALUE} must be less than the unit price',
       },
