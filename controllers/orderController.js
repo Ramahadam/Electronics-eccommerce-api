@@ -25,89 +25,65 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 exports.createOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
   let order;
-
   try {
     await session.withTransaction(async () => {
       const userId = req.userId;
-
       // Get cart with populated products
       const cart = await Cart.findOne({ user: userId })
         .populate('items.product')
         .session(session);
-
       if (!cart || !cart.items.length) {
         throw new AppError('Empty cart or user not found', 404);
       }
 
-      // ========================================
-      // STOCK VALIDATION & RESERVATION
-      // ========================================
+      // Step 1: Fetch all stocks in parallel
+      const stockPromises = cart.items.map((item) =>
+        Stock.findOne({ product: item.product._id }).session(session),
+      );
+      const stocks = await Promise.all(stockPromises);
 
-      // Step 1: Validate stock availability for ALL items FIRST
-      const stockValidations = [];
-
-      for (const item of cart.items) {
-        const stock = await Stock.findOne({
-          product: item.product._id,
-        }).session(session);
-
+      // Step 2: Validate stock and prepare reservation
+      const stockValidations = cart.items.map((item, idx) => {
+        const stock = stocks[idx];
         if (!stock) {
           throw new AppError(
             `Stock information not available for ${item.product.title}`,
             404,
           );
         }
-
         const availableStock = stock.quantity - stock.reserved;
-
         if (availableStock < item.quantity) {
           throw new AppError(
             `Insufficient stock for ${item.product.title}. Available: ${availableStock}, Requested: ${item.quantity}`,
             400,
           );
         }
+        return { stock, item, availableStock };
+      });
 
-        stockValidations.push({
-          stock,
-          item,
-          availableStock,
-        });
-      }
+      // Step 3: Reserve stock for each item in parallel
+      const reservePromises = stockValidations.map(({ stock, item }) =>
+        stock.reserve(item.quantity, session),
+      );
+      const updatedStocks = await Promise.all(reservePromises);
 
-      // Step 2: Reserve stock for each item (ATOMIC OPERATIONS)
-      for (const { stock, item } of stockValidations) {
-        // Reserve stock atomically
-        const updatedStock = await stock.reserved(item.quantity, session);
+      // Step 4: Batch create stock movements
+      const stockMovements = stockValidations.map(({ stock, item }, idx) => ({
+        product: item.product._id,
+        type: 'sale',
+        quantity: -item.quantity,
+        balanceBefore: stock.quantity,
+        balanceAfter: stock.quantity - item.quantity,
+        userId: userId,
+        reason: 'Stock reserved for order',
+        metadata: {
+          reservedQuantity: item.quantity,
+          productTitle: item.product.title,
+        },
+      }));
+      await StockMovement.insertMany(stockMovements, { session });
 
-        if (!updatedStock) {
-          throw new AppError(
-            `Failed to reserve stock for ${item.product.title}. Insufficient stock.`,
-            400,
-          );
-        }
-
-        // Record stock movement
-        await StockMovement.create(
-          [
-            {
-              product: item.product._id,
-              type: 'sale',
-              quantity: -item.quantity, // Negative = reserved for sale
-              balanceBefore: stock.quantity,
-              balanceAfter: updatedStock.quantity,
-              userId: userId,
-              reason: `Stock reserved for order`,
-              metadata: {
-                reservedQuantity: item.quantity,
-                productTitle: item.product.title,
-              },
-            },
-          ],
-          { session },
-        );
-      }
-
-      // Step 3: Create order
+      // Step 5: Create order
       const cartItems = cart.items.map((item) => ({
         product: item.product._id,
         name: item.product.title,
@@ -115,7 +91,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         image: item.product.images[0],
         quantity: item.quantity,
       }));
-
       [order] = await Order.create(
         [
           {
@@ -124,22 +99,19 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             totalAmount: cart.totalPrice,
             status: 'pending',
             paymentStatus: 'unpaid',
-            payment: {
-              provider: 'stripe',
-            },
+            payment: { provider: 'stripe' },
           },
         ],
         { session },
       );
 
-      // Step 4: Clear cart
+      // Step 6: Clear cart
       await Cart.findOneAndUpdate(
         { user: userId },
         { $set: { items: [], totalPrice: 0 } },
         { session },
       );
     });
-
     res.status(201).json({
       status: 'success',
       message: 'Order created successfully. Stock reserved.',
