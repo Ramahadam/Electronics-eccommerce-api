@@ -43,17 +43,10 @@ const productsSchema = new Schema(
       type: Number,
       validate: {
         validator: function (val) {
-          // this.unitPrice only works on CREATE, not UPDATE
-          // For updates, you'd need a pre-save hook
-          return !val || val < this.unitPrice;
+          return !val || val > this.unitPrice;
         },
         message: 'Discount price {VALUE} must be less than the unit price',
       },
-    },
-    stock: {
-      type: Number,
-      default: 0,
-      min: [0, 'Stock cannot be negative'],
     },
     description: {
       type: String,
@@ -76,87 +69,257 @@ const productsSchema = new Schema(
   },
 );
 
+// ========================================
+// VIRTUAL FIELDS
+// ========================================
+
+/**
+ * Virtual: Reviews
+ * Original functionality - kept as is
+ */
 productsSchema.virtual('reviews', {
   ref: 'Review',
   localField: '_id',
   foreignField: 'product',
 });
 
-// Create index for search perofrmance optimization
-// create compound index
+/**
+ * Virtual: Stock Record
+ * NEW: Reference to Stock model (single warehouse)
+ * Replaces embedded stock field
+ */
+productsSchema.virtual('stockInfo', {
+  ref: 'Stock',
+  localField: '_id',
+  foreignField: 'product',
+  justOne: true, // Single warehouse = one stock record per product
+});
+
+/**
+ * Virtual: Available Stock (Computed)
+ * Quick access to available quantity
+ * Returns: quantity - reserved from Stock model
+ */
+productsSchema.virtual('availableStock').get(function () {
+  if (this.stockInfo) {
+    return this.stockInfo.quantity - this.stockInfo.reserved;
+  }
+  return 0; // No stock record = 0 available
+});
+
+/**
+ * Virtual: Is In Stock (Boolean)
+ * Quick check for stock availability
+ */
+productsSchema.virtual('inStock').get(function () {
+  if (this.stockInfo) {
+    return this.stockInfo.quantity - this.stockInfo.reserved > 0;
+  }
+  return false; // No stock record = not in stock
+});
+
+/**
+ * Virtual: Stock Status
+ * User-friendly status string
+ * Returns: 'in_stock', 'low_stock', 'out_of_stock', 'unknown'
+ */
+productsSchema.virtual('stockStatus').get(function () {
+  if (this.stockInfo) {
+    return this.stockInfo.status;
+  }
+  return 'unknown'; // No stock record = unknown status
+});
+
+// ========================================
+// INDEXES
+// ========================================
+
+// Text search index (original)
 productsSchema.index({ title: 'text', description: 'text' });
+
+// NEW: Additional indexes for filtering
+productsSchema.index({ category: 1 });
+productsSchema.index({ brand: 1 });
+productsSchema.index({ unitPrice: 1 });
+
+// ========================================
+// PRE-HOOKS: Product Deletion Cleanup
+// ========================================
 
 /**
  * Pre-remove hook: Cleanup references when product is deleted
- * Removes product from all wishlists and carts
+ * UPDATED: Added stock validation and cleanup
  */
 productsSchema.pre('remove', async function (next) {
   const productId = this._id;
-
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    // Remove from all wishlists
-    await mongoose
-      .model('Wishlist')
-      .updateMany({ products: productId }, { $pull: { products: productId } })
-      .session(session);
+    await session.withTransaction(async () => {
+      // ========================================
+      // NEW: Stock validation before deletion
+      // ========================================
+      const Stock = mongoose.model('Stock');
+      const stock = await Stock.findOne({ product: productId }).session(
+        session,
+      );
 
-    // Remove from all carts
-    await mongoose
-      .model('Cart')
-      .updateMany(
-        { 'items.product': productId },
-        { $pull: { items: { product: productId } } },
-      )
-      .session(session);
+      if (stock) {
+        // Check if stock is reserved
+        if (stock.reserved > 0) {
+          throw new Error(
+            `Cannot delete product. ${stock.reserved} units are reserved for pending orders.`,
+          );
+        }
 
-    await session.commitTransaction();
-    session.endSession();
+        // Optional: Check if stock exists
+        if (stock.quantity > 0) {
+          throw new Error(
+            `Cannot delete product. ${stock.quantity} units still in stock. Adjust stock to 0 first.`,
+          );
+        }
 
+        // Delete stock record
+        await Stock.findOneAndDelete({ product: productId }, { session });
+      }
+
+      // ========================================
+      // Original cleanup (wishlists & carts)
+      // ========================================
+
+      // Remove from all wishlists
+      await mongoose
+        .model('Wishlist')
+        .updateMany(
+          { products: productId },
+          { $pull: { products: productId } },
+          { session },
+        );
+
+      // Remove from all carts
+      await mongoose
+        .model('Cart')
+        .updateMany(
+          { 'items.product': productId },
+          { $pull: { items: { product: productId } } },
+          { session },
+        );
+    });
+
+    await session.endSession();
     next();
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-
+    await session.endSession();
     next(error);
   }
 });
 
 /**
  * Pre-findOneAndDelete hook: Same cleanup for findByIdAndDelete
+ * UPDATED: Added stock validation and cleanup
  */
 productsSchema.pre('findOneAndDelete', async function (next) {
   const productId = this.getQuery()._id;
-
   const session = await mongoose.startSession();
 
-  session.startTransaction();
-
   try {
-    await mongoose
-      .model('Wishlist')
-      .updateMany({ products: productId }, { $pull: { products: productId } })
-      .session(session);
+    await session.withTransaction(async () => {
+      // ========================================
+      // NEW: Stock validation before deletion
+      // ========================================
+      const Stock = mongoose.model('Stock');
+      const stock = await Stock.findOne({ product: productId }).session(
+        session,
+      );
 
-    await mongoose
-      .model('Cart')
-      .updateMany(
-        { 'items.product': productId },
-        { $pull: { items: { product: productId } } },
-      )
-      .session(session);
+      if (stock) {
+        // Check if stock is reserved
+        if (stock.reserved > 0) {
+          throw new Error(
+            `Cannot delete product. ${stock.reserved} units are reserved for pending orders.`,
+          );
+        }
 
-    await session.commitTransaction();
-    session.endSession();
+        // Optional: Check if stock exists
+        if (stock.quantity > 0) {
+          throw new Error(
+            `Cannot delete product. ${stock.quantity} units still in stock. Adjust stock to 0 first.`,
+          );
+        }
+
+        // Delete stock record
+        await Stock.findOneAndDelete({ product: productId }, { session });
+      }
+
+      // ========================================
+      // Original cleanup (wishlists & carts)
+      // ========================================
+
+      // Remove from all wishlists
+      await mongoose
+        .model('Wishlist')
+        .updateMany(
+          { products: productId },
+          { $pull: { products: productId } },
+          { session },
+        );
+
+      // Remove from all carts
+      await mongoose
+        .model('Cart')
+        .updateMany(
+          { 'items.product': productId },
+          { $pull: { items: { product: productId } } },
+          { session },
+        );
+    });
+
+    await session.endSession();
     next();
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    await session.endSession();
     next(error);
   }
 });
+
+/**
+ * NEW: Pre-deleteOne hook
+ * Additional safety for Product.deleteOne() calls
+ */
+productsSchema.pre(
+  'deleteOne',
+  { document: true, query: false },
+  async function (next) {
+    const productId = this._id;
+    const Stock = mongoose.model('Stock');
+
+    try {
+      const stock = await Stock.findOne({ product: productId });
+
+      if (stock) {
+        if (stock.reserved > 0) {
+          return next(
+            new Error(
+              `Cannot delete product. ${stock.reserved} units are reserved for pending orders.`,
+            ),
+          );
+        }
+
+        if (stock.quantity > 0) {
+          return next(
+            new Error(
+              `Cannot delete product. ${stock.quantity} units still in stock. Adjust stock to 0 first.`,
+            ),
+          );
+        }
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 const Product = mongoose.model('Product', productsSchema);
 
